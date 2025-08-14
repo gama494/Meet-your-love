@@ -454,6 +454,43 @@ async function addComment(postId){
   input.value="";
 }
 window.uploadPost = uploadPost; window.toggleLike=toggleLike; window.focusComment=focusComment; window.addComment=addComment;
+window.sendFriendRequest = async (friendId, event) => {
+  event.stopPropagation();
+  if (friendId === meId) return alert("Cannot add yourself");
+
+  // Check if request already exists
+  const q = query(collection(db, "friendRequests"), where("from", "==", meId), where("to", "==", friendId));
+  const snap = await getDocs(q);
+  if (!snap.empty) return alert("Request already sent");
+
+  // Get friend's username
+  const friendDoc = await getDoc(doc(db, "users", friendId));
+  const friendUsername = friendDoc.exists() ? friendDoc.data().username : "User";
+
+  // Add friend request
+  await addDoc(collection(db, "friendRequests"), {
+    from: meId,
+    fromUsername: me.username || "User",
+    to: friendId,
+    toUsername: friendUsername,
+    status: "pending",
+    createdAt: serverTimestamp()
+  });
+
+  // Add notification for the other user
+  await addDoc(collection(db, "notifications"), {
+    to: friendId,
+    from: meId,
+    fromName: me.username || "User",
+    fromPhoto: me.profilePic || "",
+    type: "friend_request",
+    text: `${me.username || "Someone"} sent you a friend request`,
+    read: false,
+    createdAt: serverTimestamp()
+  });
+
+  alert("Friend request sent!");
+};
 
 
 </script>
