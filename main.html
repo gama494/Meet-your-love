@@ -165,9 +165,28 @@
   <button onclick="openModal('notifModal')">Notifications</button>
 </div>
 
+<div id="profileModal" class="modal">
+  <div class="modal-content">
+    <label>Profile Picture</label>
+    <input type="file" id="pPic">
+    <img id="pPicPreview" src="https://i.ibb.co/4pVBB1K/default-avatar.png" style="width:100px;height:100px;border-radius:50%">
+    
+    <label>First Name</label>
+    <input id="pFirst" type="text">
+    <label>Surname</label>
+    <input id="pSurname" type="text">
+    <label>Username</label>
+    <input id="pUsername" type="text">
+    <label>DOB</label>
+    <input id="pDob" type="date">
+    
+    <button onclick="saveProfile()">Save</button>
+    <button onclick="closeModal('profileModal')">Cancel</button>
+  </div>
+</div>
 
 <script type="module">
-/* ------------------ Firebase ------------------ */
+// ---------------- Firebase ----------------
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
 import { 
@@ -175,7 +194,6 @@ import {
   collection, addDoc, onSnapshot, query, where, orderBy, serverTimestamp, getDocs 
 } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-// ---------------- Firebase ----------------
 const firebaseConfig = {
   apiKey: "AIzaSyDLSjPvdhLP4Esh9i0k4Fbe5W3YUlHas94",
   authDomain: "meet-your-love-3c2e9.firebaseapp.com",
@@ -268,26 +286,36 @@ async function viewUserProfile(uid){
   const u = uDoc.data();
   const modal = $("#viewUserModal");
   modal.innerHTML = `
-    <div style="background:#fff; padding:20px; border-radius:10px; max-width:400px; width:90%; text-align:center;">
-      <img src="${u.profilePic||'https://i.ibb.co/4pVBB1K/default-avatar.png'}" style="width:100px;height:100px;border-radius:50%;display:block;margin:auto;">
-      <h3 style="margin:10px 0;">${u.username||"User"}</h3>
-      <p>${u.firstName||""} ${u.surname||""}</p>
-      <a href="${u.profilePic||''}" download style="display:block; margin:10px 0;">Download Profile Picture</a>
-      <button onclick="closeModal('viewUserModal')" style="display:block;margin:10px auto;">Close</button>
+    <div style="text-align:center;">
+      <img src="${u.profilePic||'https://i.ibb.co/4pVBB1K/default-avatar.png'}" style="width:200px;height:200px;border-radius:50%">
+      <h3>${u.username||"User"}</h3>
+      <button onclick="downloadImage('${u.profilePic||''}')">Download Profile Picture</button>
     </div>
+    <button onclick="closeModal('viewUserModal')">Close</button>
   `;
   openModal("viewUserModal");
 }
 window.viewUserProfile = viewUserProfile;
 
+function downloadImage(url){
+  if(!url) return alert("No image found");
+  const a = document.createElement("a");
+  a.href = url; a.download = "profile.jpg"; a.click();
+}
+window.downloadImage = downloadImage;
+
 // ---------------- Friend Requests ----------------
 window.sendFriendRequest = async (friendId,event)=>{
   event.stopPropagation();
   if(friendId===meId) return alert("Cannot add yourself");
+
   const q = query(collection(db,"friendRequests"),where("from","==",meId),where("to","==",friendId));
   const snap = await getDocs(q); if(!snap.empty) return alert("Request already sent");
+
   const friendDoc = await getDoc(doc(db,"users",friendId));
   const friendUsername = friendDoc.exists()?friendDoc.data().username:"User";
+
+  // Add friend request
   await addDoc(collection(db,"friendRequests"),{
     from:meId,
     fromUsername:me.username||"User",
@@ -296,6 +324,19 @@ window.sendFriendRequest = async (friendId,event)=>{
     status:"pending",
     createdAt:serverTimestamp()
   });
+
+  // Add notification
+  await addDoc(collection(db,"notifications"),{
+    to:friendId,
+    from:meId,
+    fromName: me.username || "User",
+    fromPhoto: me.profilePic || "",
+    type:"friend_request",
+    text: `${me.username || "Someone"} sent you a friend request`,
+    read:false,
+    createdAt:serverTimestamp()
+  });
+
   alert("Friend request sent!");
 };
 
@@ -309,7 +350,7 @@ function bindNotifications(){
       const row = el("div", `
         <div class="notif">
           <img class="mini" src="${n.fromPhoto||'https://i.ibb.co/4pVBB1K/default-avatar.png'}">
-          <div><strong>${n.fromName||'Someone'}</strong> ${n.type==='friend_request'?'sent you a friend request':''}</div>
+          <div><strong>${n.fromName||'Someone'}</strong> ${n.text||''}</div>
         </div>
       `);
       list.appendChild(row);
@@ -325,44 +366,34 @@ function bindPosts(){
     const feed = $("#postsList"); feed.innerHTML="";
     snap.forEach(async d=>{
       const p = d.data(); const id=d.id;
-      const likedBy = p.likedBy||[]; const iLiked = likedBy.includes(meId);
+      const likedBy = p.likedBy||[]; 
+      const iLiked = likedBy.includes(meId);
       const isOwner = p.userId===meId;
 
-      // Fetch uploader info
-      const uDoc = await getDoc(doc(db,"users",p.userId));
-      const uploader = uDoc.exists() ? uDoc.data() : {};
-      const uploaderName = uploader.username || "User";
-      const uploaderPic = uploader.profilePic || 'https://i.ibb.co/4pVBB1K/default-avatar.png';
-
-      // Media HTML (image or video)
       let mediaHtml = "";
       if(p.fileUrl){
-        if(/\.mp4(\?|$)/i.test(p.fileUrl)){
-          mediaHtml = `<video class="post-media" src="${p.fileUrl}" controls playsinline controlsList="nodownload"></video>`;
-        } else {
+        const ext = p.fileUrl.split('.').pop().toLowerCase();
+        if(['mp4','webm','ogg'].includes(ext)){
+          mediaHtml = `<video class="post-media" src="${p.fileUrl}" controls></video>`;
+        }else{
           mediaHtml = `<img class="post-media" src="${p.fileUrl}" alt="post">`;
         }
       }
 
       const post = el("div", `
         <div class="card" id="post-${id}">
-          <div class="between">
-            <div class="user-chip" style="cursor:pointer;" onclick="viewUserProfile('${p.userId}')">
-              <img class="mini" src="${uploaderPic}" alt="profile">
-              <div>
-                <div><strong>${uploaderName}</strong></div>
-                <div style="font-size:.8rem;color:#777;">${timeStr(p.timestamp)}</div>
-              </div>
-            </div>
+          <div class="user-chip" onclick="viewUserProfile('${p.userId}')">
+            <img class="mini" src="${p.userProfile||'https://i.ibb.co/4pVBB1K/default-avatar.png'}">
+            <div><strong>${p.username}</strong></div>
           </div>
-          <p style="margin:8px 0 0;">${p.text || ''}</p>
+          <p>${p.text||""}</p>
           ${mediaHtml}
-          ${p.fileUrl ? `<a href="${p.fileUrl}" download class="download-btn">Download</a>` : ""}
-          <div class="row" style="gap:10px; margin-top:10px;">
-            <button class="icon" onclick="toggleLike('${id}')">${iLiked?'💗':'🤍'} Like (${likedBy.length})</button>
-            <button class="icon" onclick="focusComment('${id}')">💬 Comment</button>
+          <div class="row">
+            <button onclick="toggleLike('${id}')">${iLiked?'💗':'🤍'} Like (${likedBy.length})</button>
+            <button onclick="focusComment('${id}')">💬 Comment</button>
           </div>
-          <div id="comments-${id}" style="margin-top:8px;"></div>
+          <div id="likes-${id}" class="likes"></div>
+          <div id="comments-${id}"></div>
           <div class="comment-box">
             <input id="cinput-${id}" placeholder="Write a comment...">
             <button onclick="addComment('${id}')">Send</button>
@@ -371,10 +402,30 @@ function bindPosts(){
       `);
       feed.appendChild(post);
       bindComments(id);
+      bindLikes(id, likedBy);
     });
   });
 }
 window.bindPosts = bindPosts;
+
+// ---------------- Likes ----------------
+function bindLikes(postId, likedBy){
+  const holder = $("#likes-"+postId); if(!holder) return;
+  holder.innerHTML="";
+  likedBy.forEach(async uid=>{
+    const uDoc = await getDoc(doc(db,"users",uid));
+    if(uDoc.exists()){
+      const u = uDoc.data();
+      const img = el("img", ""); 
+      img.src = u.profilePic || "https://i.ibb.co/4pVBB1K/default-avatar.png";
+      img.className = "mini";
+      img.title = u.username || "User";
+      img.onclick = ()=>viewUserProfile(uid);
+      holder.appendChild(img);
+    }
+  });
+}
+window.bindLikes = bindLikes;
 
 // ---------------- Comments ----------------
 function bindComments(postId){
@@ -382,7 +433,12 @@ function bindComments(postId){
   onSnapshot(q, snap=>{
     const holder = $("#comments-"+postId); if(!holder) return;
     const all = snap.docs.map(d=>({id:d.id,...d.data()}));
-    holder.innerHTML = all.map(c=>`<div class="comment"><strong>${c.username}</strong>: ${c.text}</div>`).join("");
+    holder.innerHTML = all.map(c=>`
+      <div class="comment">
+        <img class="mini" src="${c.userPhoto||'https://i.ibb.co/4pVBB1K/default-avatar.png'}" onclick="viewUserProfile('${c.userId}')">
+        <strong>${c.username}</strong>: ${c.text}
+      </div>
+    `).join("");
   });
 }
 window.bindComments = bindComments;
@@ -393,13 +449,21 @@ function openProfile(){
   $("#pSurname").value = me.surname||""; 
   $("#pUsername").value=me.username||""; 
   $("#pDob").value = me.dob||"";
+  $("#pPicPreview").src = me.profilePic || "https://i.ibb.co/4pVBB1K/default-avatar.png";
   openModal("profileModal");
 }
 window.openProfile = openProfile;
+
 window.saveProfile = async ()=>{
-  const firstName=$("#pFirst").value.trim(), surname=$("#pSurname").value.trim(), username=$("#pUsername").value.trim(), dob=$("#pDob").value;
-  let photo = me.profilePic||""; const file=$("#pPic").files[0];
+  const firstName=$("#pFirst").value.trim(),
+        surname=$("#pSurname").value.trim(),
+        username=$("#pUsername").value.trim(),
+        dob=$("#pDob").value;
+  
+  let photo = me.profilePic||"";
+  const file=$("#pPic").files[0];
   if(file) photo = await uploadToCloudinary(file);
+
   await updateDoc(doc(db,"users",meId),{firstName,surname,username,dob,profilePic:photo});
   me={...me,firstName,surname,username,dob,profilePic:photo};
   $("#navProfilePic").src = photo||"https://i.ibb.co/4pVBB1K/default-avatar.png";
@@ -419,6 +483,7 @@ async function uploadToCloudinary(file){
   if(!j.secure_url) throw new Error(j.error?.message||"Cloudinary upload failed");
   return j.secure_url;
 }
+
 async function uploadPost(){
   const file = $("#postFile").files[0]; const text = $("#postText").value.trim();
   if(!file && !text){ alert("Write something or pick a file"); return; }
@@ -434,13 +499,16 @@ async function uploadPost(){
   });
   $("#postText").value=""; $("#postFile").value="";
 }
+
 async function toggleLike(postId){
   const ref=doc(db,"posts",postId); const snap=await getDoc(ref); if(!snap.exists()) return;
   const likedBy=new Set(snap.data().likedBy||[]);
   likedBy.has(meId)? likedBy.delete(meId) : likedBy.add(meId);
   await updateDoc(ref,{likedBy:Array.from(likedBy)});
 }
+
 function focusComment(postId){ $("#cinput-"+postId)?.focus(); }
+
 async function addComment(postId){ 
   const input=$("#cinput-"+postId); const text=input.value.trim(); if(!text) return;
   await addDoc(collection(db,"posts",postId,"comments"),{
@@ -453,45 +521,11 @@ async function addComment(postId){
   });
   input.value="";
 }
-window.uploadPost = uploadPost; window.toggleLike=toggleLike; window.focusComment=focusComment; window.addComment=addComment;
-window.sendFriendRequest = async (friendId, event) => {
-  event.stopPropagation();
-  if (friendId === meId) return alert("Cannot add yourself");
 
-  // Check if request already exists
-  const q = query(collection(db, "friendRequests"), where("from", "==", meId), where("to", "==", friendId));
-  const snap = await getDocs(q);
-  if (!snap.empty) return alert("Request already sent");
-
-  // Get friend's username
-  const friendDoc = await getDoc(doc(db, "users", friendId));
-  const friendUsername = friendDoc.exists() ? friendDoc.data().username : "User";
-
-  // Add friend request
-  await addDoc(collection(db, "friendRequests"), {
-    from: meId,
-    fromUsername: me.username || "User",
-    to: friendId,
-    toUsername: friendUsername,
-    status: "pending",
-    createdAt: serverTimestamp()
-  });
-
-  // Add notification for the other user
-  await addDoc(collection(db, "notifications"), {
-    to: friendId,
-    from: meId,
-    fromName: me.username || "User",
-    fromPhoto: me.profilePic || "",
-    type: "friend_request",
-    text: `${me.username || "Someone"} sent you a friend request`,
-    read: false,
-    createdAt: serverTimestamp()
-  });
-
-  alert("Friend request sent!");
-};
-
+window.uploadPost = uploadPost; 
+window.toggleLike = toggleLike; 
+window.focusComment = focusComment; 
+window.addComment = addComment;
 
 </script>
 </body>
