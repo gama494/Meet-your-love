@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meet Your Love - Messages</title>
+<style>
+body { font-family:'Segoe UI', sans-serif; margin:0; padding:0; background:#f0f2f5; }
+nav { background:#ff4081; color:white; padding:10px 20px; display:flex; justify-content:space-between; align-items:center; }
+nav img { height:50px; width:50px; border-radius:50%; cursor:pointer; }
+nav span { font-weight:bold; margin-left:10px; }
+.container { max-width:1200px; margin:auto; padding:20px; }
+.friend-card, .chat-box { background:white; border-radius:15px; padding:15px; margin-bottom:15px; box-shadow:0 5px 15px rgba(0,0,0,0.1); display:flex; align-items:center; justify-content:space-between; }
+.friend-info { display:flex; align-items:center; gap:10px; }
+.friend-info img { width:50px; height:50px; border-radius:50%; }
+.online-dot { width:12px; height:12px; border-radius:50%; background:green; display:inline-block; }
+.chat-window { background:#fff; border-radius:15px; padding:15px; max-height:400px; overflow-y:auto; margin-bottom:10px; }
+.chat-message { margin-bottom:10px; padding:5px 10px; border-radius:10px; background:#f1f1f1; max-width:80%; }
+.chat-message.me { background:#ffdde1; margin-left:auto; }
+input, button { padding:10px; border-radius:10px; border:1px solid #ccc; margin-top:5px; }
+button { background:#ff4081; color:white; border:none; cursor:pointer; }
+button:hover { background:#e91e63; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="flex">
+    <img src="https://i.ibb.co/default-profile.png" id="navProfilePic" alt="Profile">
+    <span id="navUsername">Username</span>
+  </div>
+  <div>
+    <button onclick="goToMain()">Home</button>
+  </div>
+</nav>
+
+<div class="container">
+  <h3 id="chatFriendName">Chat</h3>
+  <div class="chat-window" id="chatWindow"></div>
+  <input type="text" id="chatInput" placeholder="Type a message...">
+  <button id="sendMsgBtn">Send</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { getFirestore, collection, getDocs, doc, addDoc, query, where, updateDoc, serverTimestamp, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDLSjPvdhLP4Esh9i0k4Fbe5W3YUlHas94",
+  authDomain: "meet-your-love-3c2e9.firebaseapp.com",
+  projectId: "meet-your-love-3c2e9",
+  storageBucket: "meet-your-love-3c2e9.appspot.com",
+  messagingSenderId: "762275409257",
+  appId: "1:762275409257:web:374c366cfea5b01dae21f8"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUserId = "";
+let currentChatFriend = "";
+let currentChatFriendName = "";
+let currentChatFriendPic = "";
+
+// Load user info
+onAuthStateChanged(auth, async user => {
+  if(user) {
+    currentUserId = user.uid;
+    const userDoc = await getDocs(collection(db,"users"));
+    const data = userDoc.docs.find(d=>d.id===user.uid)?.data();
+    if(data){
+      document.getElementById("navProfilePic").src = data.profilePic || "https://i.ibb.co/default-profile.png";
+      document.getElementById("navUsername").innerText = data.username || "Username";
+    }
+
+    // Load friend info from localStorage if redirected
+    currentChatFriend = localStorage.getItem("chatFriendId") || "";
+    currentChatFriendName = localStorage.getItem("chatFriendName") || "";
+    currentChatFriendPic = localStorage.getItem("chatFriendPic") || "";
+
+    if(currentChatFriend){
+      document.getElementById("chatFriendName").innerText = currentChatFriendName || "Chat";
+      startChat(currentChatFriend, currentChatFriendName, currentChatFriendPic);
+    }
+  } else {
+    window.location.href="index.html";
+  }
+});
+
+// Go to main page
+function goToMain(){
+  window.location.href="main.html";
+}
+
+// Start chat with selected friend
+async function startChat(friendId, friendName, friendPic){
+  currentChatFriend = friendId;
+  document.getElementById("chatWindow").innerHTML="";
+
+  const chatQuery = query(collection(db,"messages"), orderBy("timestamp"));
+  onSnapshot(chatQuery, snap=>{
+    const chatWindow = document.getElementById("chatWindow");
+    chatWindow.innerHTML="";
+    snap.forEach(docu=>{
+      const msg = docu.data();
+      if((msg.from===currentUserId && msg.to===currentChatFriend) || (msg.to===currentUserId && msg.from===currentChatFriend)) {
+        const div = document.createElement("div");
+        div.className = "chat-message" + (msg.from===currentUserId?" me":"");
+        div.innerHTML=`<strong>${msg.from===currentUserId?"Me":friendName}:</strong> ${msg.text}`;
+        chatWindow.appendChild(div);
+      }
+    });
+    chatWindow.scrollTop = chatWindow.scrollHeight;
+  });
+}
+
+// Send message
+document.getElementById("sendMsgBtn").onclick = async ()=>{
+  const text = document.getElementById("chatInput").value.trim();
+  if(!text || !currentChatFriend) return alert("Select a friend to chat");
+  await addDoc(collection(db,"messages"),{
+    from: currentUserId,
+    to: currentChatFriend,
+    text,
+    timestamp: serverTimestamp(),
+    read:false
+  });
+  document.getElementById("chatInput").value="";
+}
+</script>
+</body>
+</html>

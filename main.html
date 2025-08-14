@@ -253,13 +253,15 @@ function bindUsers(){
     const list = $("#usersList"); list.innerHTML="";
     snap.forEach(d=>{
       const u = d.data(); const uid = d.id;
-      if(uid===meId) return;
+      if(uid===meId) return; // skip yourself
       if(q && !(u.username||"").toLowerCase().includes(q)) return;
+
       const card = el("div", `
         <div class="between" style="gap:10px;">
           <div class="user-chip" onclick="viewUserProfile('${uid}')">
             <div style="position:relative;">
-              <img class="mini" src="${u.profilePic||'https://i.ibb.co/4pVBB1K/default-avatar.png'}" onerror="this.src='https://i.pravatar.cc/100?u=${uid}'">
+              <img class="mini" src="${u.profilePic||'https://i.ibb.co/4pVBB1K/default-avatar.png'}" 
+                   onerror="this.src='https://i.pravatar.cc/100?u=${uid}'">
               ${u.isActive ? '<span class="online-dot" style="position:absolute; bottom:-2px; right:-2px;"></span>': ''}
             </div>
             <div>
@@ -268,16 +270,31 @@ function bindUsers(){
             </div>
           </div>
           <div class="row">
-            <button class="ghost" onclick="sendFriendRequest('${uid}',event)">Add Friend</button>
+            <button class="ghost" 
+              onclick="startMessage('${uid}','${u.username||'User'}','${u.profilePic||''}',event)">Message</button>
           </div>
         </div>
       `);
+
       list.appendChild(card);
     });
   });
+
   search.oninput = ()=> { unsub(); bindUsers(); };
 }
 window.bindUsers = bindUsers;
+
+// ---------------- Start Message ----------------
+window.startMessage = function(friendId, friendName, friendPic, event){
+  event.stopPropagation(); // prevent also opening profile
+  // Save friend info to localStorage for message.html
+  localStorage.setItem("chatFriendId", friendId);
+  localStorage.setItem("chatFriendName", friendName);
+  localStorage.setItem("chatFriendPic", friendPic);
+  // Go to message page
+  window.location.href = "message.html";
+}
+
 
 // ---------------- View User Profile ----------------
 async function viewUserProfile(uid){
@@ -285,24 +302,30 @@ async function viewUserProfile(uid){
   if(!uDoc.exists()) return alert("User not found");
   const u = uDoc.data();
   const modal = $("#viewUserModal");
+  
   modal.innerHTML = `
     <div style="text-align:center;">
       <img src="${u.profilePic||'https://i.ibb.co/4pVBB1K/default-avatar.png'}" style="width:200px;height:200px;border-radius:50%">
       <h3>${u.username||"User"}</h3>
       <button onclick="downloadImage('${u.profilePic||''}')">Download Profile Picture</button>
+      <button onclick="startChat('${uid}','${u.username||"User"}')">Message</button>
     </div>
     <button onclick="closeModal('viewUserModal')">Close</button>
   `;
   openModal("viewUserModal");
 }
+
 window.viewUserProfile = viewUserProfile;
 
-function downloadImage(url){
-  if(!url) return alert("No image found");
-  const a = document.createElement("a");
-  a.href = url; a.download = "profile.jpg"; a.click();
+function startChat(uid, username){
+  // Redirect to message.html and pass user ID and name in URL
+  const params = new URLSearchParams();
+  params.set("peerId", uid);
+  params.set("peerName", username);
+  window.location.href = "message.html?" + params.toString();
 }
-window.downloadImage = downloadImage;
+window.startChat = startChat;
+
 
 // ---------------- Friend Requests ----------------
 window.sendFriendRequest = async (friendId,event)=>{
