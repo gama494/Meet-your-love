@@ -5,83 +5,142 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Meet Your Love - Main</title>
 <style>
+  :root{--pink:#ff4081;}
   body {font-family: 'Segoe UI', sans-serif; background:#f0f2f5; margin:0; padding:0;}
-  nav {background:#ff4081; color:white; display:flex; justify-content:space-between; align-items:center; padding:10px 20px;}
-  nav img.logo {height:50px;}
-  nav .user-info {display:flex; align-items:center; gap:10px; cursor:pointer;}
-  nav .user-info img {width:50px; height:50px; border-radius:50%; position:relative;}
-  nav .online-dot {width:12px; height:12px; background:limegreen; border-radius:50%; position:absolute; bottom:2px; right:2px; border:2px solid white;}
-  .container {padding:20px; max-width:1200px; margin:auto;}
-  .section {margin-bottom:30px;}
-  .post, .user-card {background:white; border-radius:15px; padding:20px; margin-bottom:20px; box-shadow:0 5px 15px rgba(0,0,0,0.1);}
-  .post img, .post video {max-width:100%; border-radius:10px;}
-  .user-card img {width:50px; height:50px; border-radius:50%; margin-right:10px;}
-  .flex {display:flex; align-items:center; gap:10px;}
-  button {padding:8px 12px; border:none; border-radius:10px; cursor:pointer; background:#ff4081; color:white; transition:0.3s;}
-  button:hover {background:#e91e63;}
-  input, textarea {width:100%; padding:10px; margin:5px 0; border-radius:10px; border:1px solid #ccc;}
-  .comment-section {margin-top:10px; padding-left:20px;}
-  .comment {background:#f5f5f5; padding:5px 10px; border-radius:8px; margin-bottom:5px;}
+  nav {background:var(--pink); color:white; display:flex; justify-content:space-between; align-items:center; padding:10px 16px; position:sticky; top:0; z-index:10;}
+  nav img.logo {height:40px; border-radius:8px;}
+  .nav-right{display:flex; align-items:center; gap:14px;}
+  .user-info {display:flex; align-items:center; gap:10px; cursor:pointer;}
+  .avatar {width:44px; height:44px; border-radius:50%; object-fit:cover; display:block; position:relative;}
+  .online-dot {width:12px; height:12px; background:limegreen; border-radius:50%; position:absolute; bottom:0; right:-2px; border:2px solid white;}
+  .badge{background:white;color:var(--pink); min-width:20px; padding:2px 6px; border-radius:999px; font-size:.8rem; text-align:center;}
+  .container {padding:16px; max-width:1200px; margin:auto;}
+  .grid {display:grid; grid-template-columns: 1fr; gap:16px;}
+  @media(min-width:900px){ .grid{ grid-template-columns: 320px 1fr; } }
+  .card {background:white; border-radius:16px; padding:16px; box-shadow:0 6px 16px rgba(0,0,0,.08);}
+  h3 {margin:8px 0 12px;}
+  input, textarea, select {width:100%; padding:10px; margin:6px 0; border-radius:10px; border:1px solid #ddd; font-size:1rem; background:#fff;}
+  button {padding:10px 14px; border:none; border-radius:10px; cursor:pointer; background:var(--pink); color:white; font-weight:600;}
+  button.ghost{background:#eee; color:#333;}
+  button.icon {display:inline-flex; align-items:center; gap:6px;}
+  .row{display:flex; align-items:center; gap:10px;}
+  .between{display:flex; align-items:center; justify-content:space-between;}
+  .post-media{max-width:100%; border-radius:12px; margin-top:8px;}
+  .user-chip{display:flex; align-items:center; gap:8px;}
+  .mini {width:28px; height:28px; border-radius:50%; object-fit:cover; position:relative;}
+  .liked-strip{display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;}
+  .kebab{background:transparent; color:#333;}
+  .kebab::after{content:"⋮"; font-size:22px; line-height:1;}
+  .menu{position:absolute; right:10px; top:36px; background:white; border:1px solid #eee; border-radius:10px; box-shadow:0 8px 20px rgba(0,0,0,.1); display:none; min-width:180px; z-index:5;}
+  .menu button{width:100%; background:#fff; color:#333; text-align:left; padding:10px 12px; border-radius:0;}
+  .menu button:hover{background:#fafafa;}
+  .comment-box{display:flex; gap:8px; margin-top:10px;}
+  .comment{background:#f7f7f7; border-radius:12px; padding:8px 12px; margin:6px 0;}
+  .reply{margin-left:28px;}
+  .list{display:flex; flex-direction:column; gap:10px;}
+  .notif {display:flex; gap:10px; align-items:center; background:#fff; border:1px solid #eee; padding:10px; border-radius:10px;}
+  /* Modal */
+  .modal{position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; padding:16px;}
+  .modal .panel{background:#fff; width:100%; max-width:520px; border-radius:16px; padding:16px;}
+  .cols{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .chat-box{height:320px; overflow:auto; background:#fafafa; border-radius:10px; padding:10px; margin-bottom:10px;}
+  .bubble{max-width:70%; margin:6px 0; padding:8px 12px; border-radius:12px;}
+  .me{background:var(--pink); color:white; margin-left:auto;}
+  .them{background:#fff; border:1px solid #eee;}
 </style>
 </head>
 <body>
 
 <nav>
-  <div class="logo-section flex">
+  <div class="row">
     <img class="logo" src="https://i.ibb.co/Tr9G4Kp/logo.png" alt="Logo">
-    <span style="font-size:1.5rem; font-weight:bold;">Meet Your Love</span>
+    <strong style="margin-left:8px;">Meet Your Love</strong>
   </div>
-  <div class="user-info" id="navbarUser">
-    <div style="position:relative;">
-      <img src="https://i.ibb.co/default-profile.png" alt="Profile" id="navProfilePic">
-      <span class="online-dot"></span>
+  <div class="nav-right">
+    <button id="notifBtn" class="icon"><span>🔔</span><span id="notifCount" class="badge" style="display:none">0</span></button>
+    <div id="navbarUser" class="user-info">
+      <div style="position:relative;">
+        <img id="navProfilePic" class="avatar" src="https://i.ibb.co/4pVBB1K/default-avatar.png" />
+        <span id="navOnline" class="online-dot" style="display:none;"></span>
+      </div>
+      <span id="navUsername">Username</span>
     </div>
-    <span id="navUsername">Username</span>
   </div>
 </nav>
 
-<div class="container">
-  <div class="section">
+<div class="container grid">
+  <!-- Left: People & Notifications -->
+  <div class="card">
     <input type="text" id="searchUser" placeholder="Search users...">
+    <div id="usersList" class="list" style="margin-top:10px;"></div>
+    <hr style="margin:14px 0; border:none; border-top:1px solid #eee;">
+    <div class="between"><h3>Notifications</h3><button class="ghost" id="openNotif">Open</button></div>
+    <div id="notifPeek" class="list"></div>
   </div>
 
-  <div class="section">
-    <h3>Upload Post</h3>
-    <input type="file" id="postFile" accept="image/*,video/*">
-    <textarea id="postText" placeholder="Write something..."></textarea>
-    <button onclick="uploadPost()">Post</button>
-  </div>
-
-  <div class="section">
-    <h3>All Users</h3>
-    <div id="usersList"></div>
-  </div>
-
-  <div class="section">
-    <h3>Posts</h3>
-    <div id="postsList"></div>
+  <!-- Right: Composer + Feed -->
+  <div>
+    <div class="card">
+      <h3>Create Post</h3>
+      <textarea id="postText" placeholder="Say something nice..."></textarea>
+      <div class="between">
+        <input type="file" id="postFile" accept="image/*,video/*">
+        <button id="postBtn">Post</button>
+      </div>
+    </div>
+    <div id="postsList" class="list" style="margin-top:16px;"></div>
   </div>
 </div>
 
-<div id="recaptcha-container"></div>
-
 <!-- Profile Modal -->
-<div id="profileModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);justify-content:center;align-items:center;">
-  <div style="background:white;padding:20px;border-radius:15px;width:300px;">
-    <h3>Edit Profile</h3>
-    <input type="text" id="editUsername" placeholder="Username">
-    <input type="file" id="editProfilePic" accept="image/*">
-    <button onclick="saveProfile()">Save</button>
-    <button onclick="document.getElementById('profileModal').style.display='none'">Close</button>
+<div id="profileModal" class="modal">
+  <div class="panel">
+    <div class="between"><h3>Edit Profile</h3><button class="ghost" onclick="closeModal('profileModal')">Close</button></div>
+    <div class="cols">
+      <div><label>First name</label><input id="pFirst" /></div>
+      <div><label>Surname</label><input id="pSurname" /></div>
+    </div>
+    <div class="cols">
+      <div><label>Username</label><input id="pUsername" /></div>
+      <div><label>Date of birth</label><input id="pDob" type="date" /></div>
+    </div>
+    <div><label>Change profile picture</label><input id="pPic" type="file" accept="image/*" /></div>
+    <div class="between" style="margin-top:10px;">
+      <button class="ghost" onclick="closeModal('profileModal')">Cancel</button>
+      <button onclick="saveProfile()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Notifications Modal -->
+<div id="notifModal" class="modal">
+  <div class="panel">
+    <div class="between"><h3>Notifications</h3><button class="ghost" onclick="closeModal('notifModal')">Close</button></div>
+    <div id="notifList" class="list" style="margin-top:10px;"></div>
+  </div>
+</div>
+
+<!-- Chat Modal -->
+<div id="chatModal" class="modal">
+  <div class="panel">
+    <div class="between"><h3 id="chatWith">Chat</h3><button class="ghost" onclick="closeModal('chatModal')">Close</button></div>
+    <div id="chatBox" class="chat-box"></div>
+    <div class="row">
+      <input id="chatInput" placeholder="Type a message...">
+      <button id="sendMsgBtn">Send</button>
+    </div>
   </div>
 </div>
 
 <script type="module">
+/* ------------------ Firebase ------------------ */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, collection, getDocs, addDoc, updateDoc, arrayUnion, arrayRemove, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getAuth, onAuthStateChanged, updateProfile, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { 
+  getFirestore, doc, getDoc, setDoc, updateDoc, collection, addDoc, onSnapshot, 
+  query, where, orderBy, serverTimestamp, arrayUnion, arrayRemove, getDocs 
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-// Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyDLSjPvdhLP4Esh9i0k4Fbe5W3YUlHas94",
   authDomain: "meet-your-love-3c2e9.firebaseapp.com",
@@ -90,179 +149,437 @@ const firebaseConfig = {
   messagingSenderId: "762275409257",
   appId: "1:762275409257:web:374c366cfea5b01dae21f8"
 };
-
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-let currentUserData = null;
+/* ---------------- Cloudinary ------------------ */
+const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/YOUR_CLOUD_NAME/upload";
+const CLOUDINARY_PRESET = "YOUR_UNSIGNED_PRESET";
 
+/* --------------- Globals / State -------------- */
+let me = null;            // my user document (data)
+let meId = null;          // my UID
+let currentChatId = null; // active chat id
+let currentChatPeer = null;
+
+/* --------------- Helpers ---------------------- */
+const $ = sel => document.querySelector(sel);
+const el = (tag, html) => { const d=document.createElement(tag); d.innerHTML=html; return d; };
+const timeStr = ts => ts?.seconds ? new Date(ts.seconds*1000).toLocaleString() : "";
+
+/* ------------- Presence (online dot) ---------- */
+async function setActive(isActive){
+  if(!meId) return;
+  await updateDoc(doc(db,"users",meId), { isActive, lastSeen: serverTimestamp() });
+}
+window.addEventListener("beforeunload", ()=> setActive(false));
+
+/* ------------- Auth bootstrap ----------------- */
 onAuthStateChanged(auth, async (user) => {
-  if (user) {
-    const userDoc = await getDoc(doc(db, "users", user.uid));
-    if (userDoc.exists()) {
-      currentUserData = userDoc.data();
-      document.getElementById("navProfilePic").src = currentUserData.profilePic || "https://i.ibb.co/default-profile.png";
-      document.getElementById("navUsername").innerText = currentUserData.username || "Username";
-    }
-    document.getElementById("navbarUser").onclick = () => {
-      document.getElementById("editUsername").value = currentUserData.username;
-      document.getElementById("profileModal").style.display = "flex";
-    };
-    loadUsers();
-    loadPosts();
-  } else {
-    window.location.href = "index.html";
-  }
+  if(!user){ location.href = "index.html"; return; }
+  meId = user.uid;
+  const uDoc = await getDoc(doc(db,"users",meId));
+  me = uDoc.data() || {};
+  // navbar
+  $("#navProfilePic").src = me.profilePic || "https://i.ibb.co/4pVBB1K/default-avatar.png";
+  $("#navUsername").textContent = me.username || "Username";
+  $("#navOnline").style.display = "inline-block";
+  // clicking avatar opens profile
+  $("#navbarUser").onclick = openProfile;
+
+  // mark me active
+  await setActive(true);
+
+  // realtime users list
+  bindUsers();
+
+  // realtime notifications
+  bindNotifications();
+
+  // realtime feed
+  bindPosts();
+
+  // actions
+  $("#postBtn").onclick = uploadPost;
+  $("#notifBtn").onclick = ()=> openModal("notifModal");
+  $("#openNotif").onclick = ()=> openModal("notifModal");
 });
 
-async function loadUsers() {
-  const usersSnap = await getDocs(collection(db, "users"));
-  const usersList = document.getElementById("usersList");
-  usersList.innerHTML = "";
-  usersSnap.forEach(docu => {
-    const data = docu.data();
-    if (docu.id === auth.currentUser.uid) return; // don't show yourself
-    const div = document.createElement("div");
-    div.className = "user-card flex";
-    div.innerHTML = `
-      <img src="${data.profilePic || 'https://i.ibb.co/default-profile.png'}" alt="Profile">
-      <span>${data.username || 'Username'}</span>
-      <span class="online-dot"></span>
-      <button onclick="follow('${docu.id}')">Follow</button>
-      <button onclick="sendFriendRequest('${docu.id}')">Add Friend</button>
-    `;
-    usersList.appendChild(div);
-  });
-}
-
-async function loadPosts() {
-  const postsSnap = await getDocs(collection(db, "posts"));
-  const postsList = document.getElementById("postsList");
-  postsList.innerHTML = "";
-  postsSnap.forEach(docu => {
-    const data = docu.data();
-    const hasLiked = (data.likedBy || []).includes(auth.currentUser.uid);
-    const div = document.createElement("div");
-    div.className = "post";
-    div.innerHTML = `
-      <div class="flex" style="justify-content:space-between;">
-        <div class="flex">
-          <img src="${data.userProfile || 'https://i.ibb.co/default-profile.png'}" width="50" height="50" style="border-radius:50%">
-          <strong>${data.username}</strong>
+/* ------------- Users (left column) ------------ */
+function bindUsers(){
+  const search = $("#searchUser");
+  onSnapshot(collection(db,"users"), (snap)=>{
+    const q = (search.value||"").toLowerCase();
+    const list = $("#usersList"); list.innerHTML = "";
+    snap.forEach(d=>{
+      const u = d.data(); const uid = d.id;
+      if(uid===meId) return; // don't show myself
+      if(q && !(u.username||"").toLowerCase().includes(q)) return;
+      const onlineDot = u.isActive ? '<span class="online-dot" style="position:relative; left:-16px; top:16px;"></span>' : '';
+      const card = el("div", `
+        <div class="between" style="gap:10px;">
+          <div class="user-chip">
+            <div style="position:relative;">
+              <img class="mini" src="${u.profilePic || 'https://i.ibb.co/4pVBB1K/default-avatar.png'}">
+              ${u.isActive ? '<span class="online-dot" style="position:absolute; bottom:-2px; right:-2px;"></span>' : ''}
+            </div>
+            <div>
+              <div><strong>${u.username||'User'}</strong></div>
+              <div style="font-size:.85rem;color:#777;">${u.firstName||''} ${u.surname||''}</div>
+            </div>
+          </div>
+          <div class="row">
+            <button class="ghost" onclick="sendFriendRequest('${uid}')">Add Friend</button>
+          </div>
         </div>
-        <span>${data.timestamp?.seconds ? new Date(data.timestamp.seconds*1000).toLocaleString() : ''}</span>
-      </div>
-      <p>${data.text}</p>
-      ${data.fileUrl.endsWith(".mp4") ? `<video src="${data.fileUrl}" controls></video>` : `<img src="${data.fileUrl}" />`}
-      <div class="flex" style="gap:10px; margin-top:5px;">
-        <button onclick="likePost('${docu.id}')">${hasLiked ? 'Unlike' : 'Like'} (${data.likes||0})</button>
-        <button onclick="commentPost('${docu.id}')">Comment</button>
-      </div>
-      <div class="comment-section" id="comments-${docu.id}"></div>
-    `;
-    postsList.appendChild(div);
-    loadComments(docu.id);
+      `);
+      list.appendChild(card);
+    });
+  });
+  search.oninput = bindUsers;
+}
+
+/* ---------------- Notifications ---------------- */
+function bindNotifications(){
+  const q = query(collection(db,"notifications"), where("to","==",meId), orderBy("createdAt","desc"));
+  onSnapshot(q, (snap)=>{
+    const list = $("#notifList"); list.innerHTML="";
+    const peek = $("#notifPeek"); peek.innerHTML="";
+    let unread=0;
+    snap.forEach(d=>{
+      const n = d.data(); if(!n.read) unread++;
+      const row = el("div", `
+        <div class="notif">
+          <img class="mini" src="${n.fromPhoto || 'https://i.ibb.co/4pVBB1K/default-avatar.png'}">
+          <div style="flex:1;">
+            <div><strong>${n.fromName||'Someone'}</strong> ${n.type==='friend_request' ? 'sent you a friend request' : n.text||''}</div>
+            <div style="font-size:.8rem;color:#777;">${timeStr(n.createdAt)}</div>
+          </div>
+          ${n.type==='friend_request' && n.status==='pending' ? `
+            <button onclick="confirmFriend('${d.id}','${n.from}','${n.fromName||''}','${n.fromPhoto||''}')">Confirm</button>
+          `:''}
+        </div>
+      `);
+      list.appendChild(row);
+
+      if(peek.childElementCount<3) peek.appendChild(row.cloneNode(true));
+    });
+    const badge = $("#notifCount");
+    if(unread>0){ badge.style.display="inline-block"; badge.textContent=unread; } else { badge.style.display="none"; }
   });
 }
 
-window.uploadPost = async function() {
+/* --------------- Posts / Feed ------------------ */
+function bindPosts(){
+  const q = query(collection(db,"posts"), orderBy("timestamp","desc"));
+  onSnapshot(q, async (snap)=>{
+    const feed = $("#postsList"); feed.innerHTML="";
+    for (const d of snap.docs){
+      const p = d.data(); const id = d.id;
+      const likedBy = p.likedBy || [];
+      const iLiked = likedBy.includes(meId);
+      const isOwner = p.userId===meId;
+
+      // build likes avatars (fetch profiles for liked users)
+      const likeAvatars = [];
+      for (const uid of likedBy.slice(0,10)){
+        const uDoc = await getDoc(doc(db,"users",uid));
+        const u = uDoc.exists()? uDoc.data() : {};
+        likeAvatars.push(`
+          <div style="position:relative;">
+            <img class="mini" src="${u.profilePic || 'https://i.ibb.co/4pVBB1K/default-avatar.png'}" title="${u.username||''}">
+            ${u.isActive ? '<span class="online-dot" style="position:absolute; bottom:-2px; right:-2px;"></span>' : ''}
+          </div>
+        `);
+      }
+
+      const mediaHtml = p.fileUrl?.match(/\.mp4(\?|$)/i)
+        ? `<video class="post-media" src="${p.fileUrl}" controls playsinline></video>`
+        : (p.fileUrl ? `<img class="post-media" src="${p.fileUrl}">` : "");
+
+      const post = el("div", `
+        <div class="card">
+          <div class="between">
+            <div class="user-chip">
+              <img class="mini" src="${p.userProfile || 'https://i.ibb.co/4pVBB1K/default-avatar.png'}">
+              <div>
+                <div><strong>${p.username||'User'}</strong></div>
+                <div style="font-size:.8rem;color:#777;">${timeStr(p.timestamp)}</div>
+              </div>
+            </div>
+            <div style="position:relative;">
+              ${isOwner ? `<button class="kebab" onclick="toggleMenu('${id}')"></button>` : ''}
+              <div id="menu-${id}" class="menu">
+                <button onclick="editPostText('${id}','${(p.text||'').replace(/"/g,'&quot;')}')">Edit text</button>
+                <button onclick="replacePostMedia('${id}')">Replace media</button>
+                <button onclick="deletePost('${id}')">Delete</button>
+              </div>
+            </div>
+          </div>
+
+          <p style="margin:8px 0 0;">${p.text||''}</p>
+          ${mediaHtml}
+
+          <div class="row" style="gap:10px; margin-top:10px;">
+            <button class="icon" onclick="toggleLike('${id}')">${iLiked?'💗':'🤍'} Like (${likedBy.length})</button>
+            <button class="icon" onclick="focusComment('${id}')">💬 Comment</button>
+          </div>
+
+          <div class="liked-strip">${likeAvatars.join("")}</div>
+
+          <div id="comments-${id}" style="margin-top:8px;"></div>
+          <div class="comment-box">
+            <input id="cinput-${id}" placeholder="Write a comment...">
+            <button onclick="addComment('${id}')">Send</button>
+          </div>
+        </div>
+      `);
+      feed.appendChild(post);
+
+      bindComments(id);
+    }
+  });
+}
+
+function toggleMenu(id){
+  const m = document.getElementById(`menu-${id}`);
+  m.style.display = (m.style.display==="block" ? "none" : "block");
+  // close if clicked outside
+  const handler = (e)=>{ if(!m.contains(e.target)){ m.style.display="none"; document.removeEventListener('click',handler);} };
+  setTimeout(()=> document.addEventListener('click', handler), 0);
+}
+
+/* --------------- Post actions ------------------ */
+async function uploadToCloudinary(file){
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("upload_preset", CLOUDINARY_PRESET);
+  const r = await fetch(CLOUDINARY_URL, {method:"POST", body:fd});
+  const j = await r.json();
+  if(!j.secure_url) throw new Error(j.error?.message || "Cloudinary upload failed");
+  return j.secure_url;
+}
+
+async function uploadPost(){
   const file = document.getElementById("postFile").files[0];
   const text = document.getElementById("postText").value.trim();
-  if (!file) return alert("Select a file first");
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("upload_preset", "voice upload");
-  const res = await fetch("https://api.cloudinary.com/v1_1/dcmudqqsp/upload", {method:"POST", body:formData});
-  const json = await res.json();
-  await addDoc(collection(db, "posts"), {
-    userId: auth.currentUser.uid,
-    username: currentUserData.username,
-    userProfile: currentUserData.profilePic || "https://i.ibb.co/default-profile.png",
-    text: text,
-    fileUrl: json.secure_url,
-    timestamp: serverTimestamp(),
-    likes: 0,
-    likedBy: []
-  });
-  document.getElementById("postText").value = "";
-  document.getElementById("postFile").value = "";
-  loadPosts();
-}
-
-window.likePost = async function(postId) {
-  const ref = doc(db, "posts", postId);
-  const snap = await getDoc(ref);
-  if (snap.exists()) {
-    const data = snap.data();
-    let likes = data.likes || 0;
-    let likedBy = data.likedBy || [];
-    if (likedBy.includes(auth.currentUser.uid)) {
-      likes--;
-      likedBy = likedBy.filter(id => id !== auth.currentUser.uid);
-    } else {
-      likes++;
-      likedBy.push(auth.currentUser.uid);
-    }
-    await updateDoc(ref, {likes, likedBy});
-    loadPosts();
-  }
-}
-
-window.commentPost = async function(postId) {
-  const comment = prompt("Enter your comment:");
-  if (comment) {
-    await addDoc(collection(db, "posts", postId, "comments"), {
-      userId: auth.currentUser.uid,
-      username: currentUserData.username,
-      text: comment,
-      timestamp: serverTimestamp()
+  if(!file && !text){ alert("Write something or pick a file"); return; }
+  let url = null;
+  try{
+    if(file){ url = await uploadToCloudinary(file); }
+    await addDoc(collection(db,"posts"),{
+      userId: meId,
+      username: me.username,
+      userProfile: me.profilePic || '',
+      text, fileUrl:url||'',
+      timestamp: serverTimestamp(),
+      likedBy:[]
     });
-    loadComments(postId);
-  }
+    document.getElementById("postText").value="";
+    document.getElementById("postFile").value="";
+  }catch(e){ alert(e.message); }
 }
 
-async function loadComments(postId) {
-  const snap = await getDocs(collection(db, "posts", postId, "comments"));
-  const section = document.getElementById(`comments-${postId}`);
-  section.innerHTML = "";
-  snap.forEach(c => {
-    const data = c.data();
-    section.innerHTML += `<div class="comment"><strong>${data.username}</strong>: ${data.text}</div>`;
-  });
+async function toggleLike(postId){
+  const ref = doc(db,"posts",postId);
+  const snap = await getDoc(ref);
+  if(!snap.exists()) return;
+  const p = snap.data();
+  const likedBy = new Set(p.likedBy||[]);
+  if(likedBy.has(meId)) likedBy.delete(meId); else likedBy.add(meId);
+  await updateDoc(ref, { likedBy: Array.from(likedBy) });
 }
 
-window.saveProfile = async function() {
-  const newUsername = document.getElementById("editUsername").value.trim();
-  const file = document.getElementById("editProfilePic").files[0];
-  let newPic = currentUserData.profilePic;
-  if (file) {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", "voice upload");
-    const res = await fetch("https://api.cloudinary.com/v1_1/dcmudqqsp/upload", {method:"POST", body:formData});
-    const json = await res.json();
-    newPic = json.secure_url;
-  }
-  await updateDoc(doc(db, "users", auth.currentUser.uid), {username: newUsername, profilePic: newPic});
-  currentUserData.username = newUsername;
-  currentUserData.profilePic = newPic;
-  document.getElementById("navProfilePic").src = newPic;
-  document.getElementById("navUsername").innerText = newUsername;
-  document.getElementById("profileModal").style.display = "none";
+function focusComment(postId){
+  const el = document.getElementById(`cinput-${postId}`);
+  el?.focus();
 }
 
-window.follow = function(uid){ alert("Followed "+uid);}
-window.sendFriendRequest = async function(friendId) {
-  if (friendId === auth.currentUser.uid) return alert("You cannot add yourself!");
-  await addDoc(collection(db, "friendRequests"), {
-    from: auth.currentUser.uid,
-    to: friendId,
-    status: "pending",
+async function addComment(postId, parentId=null){
+  const input = document.getElementById(`cinput-${postId}`);
+  const text = input.value.trim();
+  if(!text) return;
+  await addDoc(collection(db,"posts",postId,"comments"),{
+    userId: meId,
+    username: me.username,
+    userPhoto: me.profilePic || '',
+    text, parentId: parentId||null,
     timestamp: serverTimestamp()
   });
-  alert("Friend request sent!");
+  input.value="";
 }
+
+function bindComments(postId){
+  const q = query(collection(db,"posts",postId,"comments"), orderBy("timestamp","asc"));
+  onSnapshot(q, (snap)=>{
+    const holder = document.getElementById(`comments-${postId}`);
+    if(!holder) return;
+    const tree = {};
+    const nodes = [];
+    snap.forEach(d=>{
+      const c = d.data(); c.id=d.id; c.children=[];
+      tree[c.id]=c; if(c.parentId){ (tree[c.parentId]?.children|| (tree[c.parentId]={children:[]}).children).push(c); } else nodes.push(c);
+    });
+    const render = (arr,depth=0)=> arr.map(c=>`
+      <div class="comment ${depth?'reply':''}">
+        <div class="user-chip">
+          <img class="mini" src="${c.userPhoto||'https://i.ibb.co/4pVBB1K/default-avatar.png'}">
+          <div><strong>${c.username}</strong> <span style="color:#777;font-size:.8rem;">${timeStr(c.timestamp)}</span></div>
+        </div>
+        <div style="margin-top:4px;">${c.text}</div>
+        <button class="ghost" style="margin-top:4px;" onclick="replyTo('${postId}','${c.id}')">Reply</button>
+        ${c.children?.length? render(c.children, depth+1):''}
+      </div>
+    `).join("");
+    holder.innerHTML = render(nodes);
+  });
+}
+window.replyTo = (postId, parentId)=>{
+  const txt = prompt("Reply:");
+  if(!txt) return;
+  addComment(postId, parentId, txt);
+}
+
+/* --------------- Edit / Delete post ------------ */
+window.editPostText = async (postId, currentText="")=>{
+  const t = prompt("Edit post text:", currentText||"");
+  if(t===null) return;
+  await updateDoc(doc(db,"posts",postId), { text:t });
+}
+window.replacePostMedia = async (postId)=>{
+  const picker = document.createElement("input");
+  picker.type="file"; picker.accept="image/*,video/*";
+  picker.onchange = async ()=> {
+    const file = picker.files[0]; if(!file) return;
+    try{
+      const url = await uploadToCloudinary(file);
+      await updateDoc(doc(db,"posts",postId), { fileUrl:url });
+    }catch(e){ alert(e.message); }
+  };
+  picker.click();
+}
+window.deletePost = async (postId)=>{
+  if(!confirm("Delete this post?")) return;
+  await updateDoc(doc(db,"posts",postId), { text:"[deleted]", fileUrl:"" });
+}
+
+/* ---------------- Profile edit ----------------- */
+function openProfile(){
+  $("#pFirst").value   = me.firstName || "";
+  $("#pSurname").value = me.surname || "";
+  $("#pUsername").value= me.username || "";
+  $("#pDob").value     = me.dob || "";
+  openModal("profileModal");
+}
+window.saveProfile = async ()=>{
+  const firstName = $("#pFirst").value.trim();
+  const surname   = $("#pSurname").value.trim();
+  const username  = $("#pUsername").value.trim();
+  const dob       = $("#pDob").value;
+  let photo = me.profilePic || "";
+  const file = $("#pPic").files[0];
+  try{
+    if(file){ photo = await uploadToCloudinary(file); }
+    await updateDoc(doc(db,"users",meId), { firstName, surname, username, dob, profilePic:photo });
+    me = {...me, firstName, surname, username, dob, profilePic:photo};
+    $("#navProfilePic").src = photo || "https://i.ibb.co/4pVBB1K/default-avatar.png";
+    $("#navUsername").textContent = username || "Username";
+    closeModal("profileModal");
+  }catch(e){ alert(e.message); }
+}
+
+/* ------------- Friend requests + chat ---------- */
+window.sendFriendRequest = async (toId)=>{
+  if(toId===meId) return alert("You cannot add yourself.");
+  // prevent duplicate pending
+  const qx = query(collection(db,"friendRequests"),
+    where("from","==",meId), where("to","==",toId), where("status","==","pending"));
+  const dup = await getDocs(qx);
+  if(!dup.empty) return alert("Request already sent.");
+
+  await addDoc(collection(db,"friendRequests"),{
+    from: meId, to: toId, status:"pending", createdAt: serverTimestamp()
+  });
+
+  // notify receiver
+  const toDoc = await getDoc(doc(db,"users",toId));
+  await addDoc(collection(db,"notifications"),{
+    to: toId,
+    type:"friend_request",
+    status:"pending",
+    from: meId,
+    fromName: me.username,
+    fromPhoto: me.profilePic || "",
+    createdAt: serverTimestamp(),
+    read:false
+  });
+
+  alert("Friend request sent!");
+};
+
+window.confirmFriend = async (notifId, fromId, fromName, fromPhoto)=>{
+  // mark notification as accepted
+  await updateDoc(doc(db,"notifications", notifId), { status:"accepted", read:true });
+
+  // find or create chat
+  let chatId = null;
+  const existing = await getDocs(query(collection(db,"chats"),
+    where("members","array-contains", meId)));
+  existing.forEach(c=>{
+    const m = c.data().members||[];
+    if(m.includes(fromId) && m.includes(meId)) chatId = c.id;
+  });
+  if(!chatId){
+    const c = await addDoc(collection(db,"chats"),{
+      members:[meId, fromId],
+      createdAt: serverTimestamp()
+    });
+    chatId = c.id;
+  }
+  openChat(chatId, fromId, fromName, fromPhoto);
+};
+
+/* ----------------- Chat modal ------------------ */
+function openChat(id, peerId, peerName, peerPhoto){
+  currentChatId = id; currentChatPeer = {peerId, peerName, peerPhoto};
+  $("#chatWith").textContent = `Chat with ${peerName}`;
+  openModal("chatModal");
+  // bind messages
+  const qmsg = query(collection(db,"chats",id,"messages"), orderBy("createdAt","asc"));
+  onSnapshot(qmsg, (snap)=>{
+    const box = $("#chatBox"); box.innerHTML="";
+    snap.forEach(m=>{
+      const msg = m.data();
+      const mine = msg.from===meId;
+      box.appendChild(el("div", `<div class="bubble ${mine?'me':'them'}">${msg.text||''}</div>`));
+    });
+    box.scrollTop = box.scrollHeight;
+  });
+  $("#sendMsgBtn").onclick = async ()=>{
+    const input = $("#chatInput");
+    const text = input.value.trim(); if(!text) return;
+    await addDoc(collection(db,"chats",id,"messages"),{
+      from: meId, text, createdAt: serverTimestamp()
+    });
+    input.value="";
+  };
+}
+
+/* ----------------- Modals utils ---------------- */
+function openModal(id){ document.getElementById(id).style.display="flex"; }
+function closeModal(id){ document.getElementById(id).style.display="none"; }
+window.openModal = openModal; window.closeModal = closeModal;
+
+/* --------------- Expose replies --------------- */
+window.toggleMenu = toggleMenu;
+window.editPostText = window.editPostText;
+window.replacePostMedia = window.replacePostMedia;
+window.deletePost = window.deletePost;
+window.toggleLike = toggleLike;
+window.focusComment = focusComment;
+window.addComment = addComment;
+
 </script>
 </body>
 </html>
