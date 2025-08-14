@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Meet Your Love - Main</title>
+<style>
+  body {font-family: 'Segoe UI', sans-serif; background:#f0f2f5; margin:0; padding:0;}
+  nav {background:#ff4081; color:white; display:flex; justify-content:space-between; align-items:center; padding:10px 20px;}
+  nav img.logo {height:50px;}
+  nav .user-info {display:flex; align-items:center; gap:10px; cursor:pointer;}
+  nav .user-info img {width:50px; height:50px; border-radius:50%; position:relative;}
+  nav .online-dot {width:12px; height:12px; background:limegreen; border-radius:50%; position:absolute; bottom:2px; right:2px; border:2px solid white;}
+  .container {padding:20px; max-width:1200px; margin:auto;}
+  .section {margin-bottom:30px;}
+  .post, .user-card {background:white; border-radius:15px; padding:20px; margin-bottom:20px; box-shadow:0 5px 15px rgba(0,0,0,0.1);}
+  .post img, .post video {max-width:100%; border-radius:10px;}
+  .user-card img {width:50px; height:50px; border-radius:50%; margin-right:10px;}
+  .flex {display:flex; align-items:center; gap:10px;}
+  button {padding:8px 12px; border:none; border-radius:10px; cursor:pointer; background:#ff4081; color:white; transition:0.3s;}
+  button:hover {background:#e91e63;}
+  input, textarea {width:100%; padding:10px; margin:5px 0; border-radius:10px; border:1px solid #ccc;}
+  .comment-section {margin-top:10px; padding-left:20px;}
+  .comment {background:#f5f5f5; padding:5px 10px; border-radius:8px; margin-bottom:5px;}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo-section flex">
+    <img class="logo" src="https://i.ibb.co/Tr9G4Kp/logo.png" alt="Logo">
+    <span style="font-size:1.5rem; font-weight:bold;">Meet Your Love</span>
+  </div>
+  <div class="user-info" id="navbarUser">
+    <div style="position:relative;">
+      <img src="https://i.ibb.co/default-profile.png" alt="Profile" id="navProfilePic">
+      <span class="online-dot"></span>
+    </div>
+    <span id="navUsername">Username</span>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="section">
+    <input type="text" id="searchUser" placeholder="Search users...">
+  </div>
+
+  <div class="section">
+    <h3>Upload Post</h3>
+    <input type="file" id="postFile" accept="image/*,video/*">
+    <textarea id="postText" placeholder="Write something..."></textarea>
+    <button onclick="uploadPost()">Post</button>
+  </div>
+
+  <div class="section">
+    <h3>All Users</h3>
+    <div id="usersList"></div>
+  </div>
+
+  <div class="section">
+    <h3>Posts</h3>
+    <div id="postsList"></div>
+  </div>
+</div>
+
+<div id="recaptcha-container"></div>
+
+<!-- Profile Modal -->
+<div id="profileModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);justify-content:center;align-items:center;">
+  <div style="background:white;padding:20px;border-radius:15px;width:300px;">
+    <h3>Edit Profile</h3>
+    <input type="text" id="editUsername" placeholder="Username">
+    <input type="file" id="editProfilePic" accept="image/*">
+    <button onclick="saveProfile()">Save</button>
+    <button onclick="document.getElementById('profileModal').style.display='none'">Close</button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+import { getAuth, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, collection, getDocs, addDoc, updateDoc, arrayUnion, arrayRemove, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+// Firebase Config
+const firebaseConfig = {
+  apiKey: "AIzaSyDLSjPvdhLP4Esh9i0k4Fbe5W3YUlHas94",
+  authDomain: "meet-your-love-3c2e9.firebaseapp.com",
+  projectId: "meet-your-love-3c2e9",
+  storageBucket: "meet-your-love-3c2e9.appspot.com",
+  messagingSenderId: "762275409257",
+  appId: "1:762275409257:web:374c366cfea5b01dae21f8"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUserData = null;
+
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    const userDoc = await getDoc(doc(db, "users", user.uid));
+    if (userDoc.exists()) {
+      currentUserData = userDoc.data();
+      document.getElementById("navProfilePic").src = currentUserData.profilePic || "https://i.ibb.co/default-profile.png";
+      document.getElementById("navUsername").innerText = currentUserData.username || "Username";
+    }
+    document.getElementById("navbarUser").onclick = () => {
+      document.getElementById("editUsername").value = currentUserData.username;
+      document.getElementById("profileModal").style.display = "flex";
+    };
+    loadUsers();
+    loadPosts();
+  } else {
+    window.location.href = "index.html";
+  }
+});
+
+async function loadUsers() {
+  const usersSnap = await getDocs(collection(db, "users"));
+  const usersList = document.getElementById("usersList");
+  usersList.innerHTML = "";
+  usersSnap.forEach(docu => {
+    const data = docu.data();
+    if (docu.id === auth.currentUser.uid) return; // don't show yourself
+    const div = document.createElement("div");
+    div.className = "user-card flex";
+    div.innerHTML = `
+      <img src="${data.profilePic || 'https://i.ibb.co/default-profile.png'}" alt="Profile">
+      <span>${data.username || 'Username'}</span>
+      <span class="online-dot"></span>
+      <button onclick="follow('${docu.id}')">Follow</button>
+      <button onclick="sendFriendRequest('${docu.id}')">Add Friend</button>
+    `;
+    usersList.appendChild(div);
+  });
+}
+
+async function loadPosts() {
+  const postsSnap = await getDocs(collection(db, "posts"));
+  const postsList = document.getElementById("postsList");
+  postsList.innerHTML = "";
+  postsSnap.forEach(docu => {
+    const data = docu.data();
+    const hasLiked = (data.likedBy || []).includes(auth.currentUser.uid);
+    const div = document.createElement("div");
+    div.className = "post";
+    div.innerHTML = `
+      <div class="flex" style="justify-content:space-between;">
+        <div class="flex">
+          <img src="${data.userProfile || 'https://i.ibb.co/default-profile.png'}" width="50" height="50" style="border-radius:50%">
+          <strong>${data.username}</strong>
+        </div>
+        <span>${data.timestamp?.seconds ? new Date(data.timestamp.seconds*1000).toLocaleString() : ''}</span>
+      </div>
+      <p>${data.text}</p>
+      ${data.fileUrl.endsWith(".mp4") ? `<video src="${data.fileUrl}" controls></video>` : `<img src="${data.fileUrl}" />`}
+      <div class="flex" style="gap:10px; margin-top:5px;">
+        <button onclick="likePost('${docu.id}')">${hasLiked ? 'Unlike' : 'Like'} (${data.likes||0})</button>
+        <button onclick="commentPost('${docu.id}')">Comment</button>
+      </div>
+      <div class="comment-section" id="comments-${docu.id}"></div>
+    `;
+    postsList.appendChild(div);
+    loadComments(docu.id);
+  });
+}
+
+window.uploadPost = async function() {
+  const file = document.getElementById("postFile").files[0];
+  const text = document.getElementById("postText").value.trim();
+  if (!file) return alert("Select a file first");
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", "voice upload");
+  const res = await fetch("https://api.cloudinary.com/v1_1/dcmudqqsp/upload", {method:"POST", body:formData});
+  const json = await res.json();
+  await addDoc(collection(db, "posts"), {
+    userId: auth.currentUser.uid,
+    username: currentUserData.username,
+    userProfile: currentUserData.profilePic || "https://i.ibb.co/default-profile.png",
+    text: text,
+    fileUrl: json.secure_url,
+    timestamp: serverTimestamp(),
+    likes: 0,
+    likedBy: []
+  });
+  document.getElementById("postText").value = "";
+  document.getElementById("postFile").value = "";
+  loadPosts();
+}
+
+window.likePost = async function(postId) {
+  const ref = doc(db, "posts", postId);
+  const snap = await getDoc(ref);
+  if (snap.exists()) {
+    const data = snap.data();
+    let likes = data.likes || 0;
+    let likedBy = data.likedBy || [];
+    if (likedBy.includes(auth.currentUser.uid)) {
+      likes--;
+      likedBy = likedBy.filter(id => id !== auth.currentUser.uid);
+    } else {
+      likes++;
+      likedBy.push(auth.currentUser.uid);
+    }
+    await updateDoc(ref, {likes, likedBy});
+    loadPosts();
+  }
+}
+
+window.commentPost = async function(postId) {
+  const comment = prompt("Enter your comment:");
+  if (comment) {
+    await addDoc(collection(db, "posts", postId, "comments"), {
+      userId: auth.currentUser.uid,
+      username: currentUserData.username,
+      text: comment,
+      timestamp: serverTimestamp()
+    });
+    loadComments(postId);
+  }
+}
+
+async function loadComments(postId) {
+  const snap = await getDocs(collection(db, "posts", postId, "comments"));
+  const section = document.getElementById(`comments-${postId}`);
+  section.innerHTML = "";
+  snap.forEach(c => {
+    const data = c.data();
+    section.innerHTML += `<div class="comment"><strong>${data.username}</strong>: ${data.text}</div>`;
+  });
+}
+
+window.saveProfile = async function() {
+  const newUsername = document.getElementById("editUsername").value.trim();
+  const file = document.getElementById("editProfilePic").files[0];
+  let newPic = currentUserData.profilePic;
+  if (file) {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("upload_preset", "voice upload");
+    const res = await fetch("https://api.cloudinary.com/v1_1/dcmudqqsp/upload", {method:"POST", body:formData});
+    const json = await res.json();
+    newPic = json.secure_url;
+  }
+  await updateDoc(doc(db, "users", auth.currentUser.uid), {username: newUsername, profilePic: newPic});
+  currentUserData.username = newUsername;
+  currentUserData.profilePic = newPic;
+  document.getElementById("navProfilePic").src = newPic;
+  document.getElementById("navUsername").innerText = newUsername;
+  document.getElementById("profileModal").style.display = "none";
+}
+
+window.follow = function(uid){ alert("Followed "+uid);}
+window.sendFriendRequest = async function(friendId) {
+  if (friendId === auth.currentUser.uid) return alert("You cannot add yourself!");
+  await addDoc(collection(db, "friendRequests"), {
+    from: auth.currentUser.uid,
+    to: friendId,
+    status: "pending",
+    timestamp: serverTimestamp()
+  });
+  alert("Friend request sent!");
+}
+</script>
+</body>
+</html>
