@@ -10,16 +10,15 @@ nav { background:#ff4081; color:white; padding:10px 20px; display:flex; justify-
 nav img { height:50px; width:50px; border-radius:50%; cursor:pointer; }
 nav span { font-weight:bold; margin-left:10px; }
 .container { max-width:1200px; margin:auto; padding:20px; }
-.friend-card, .chat-box { background:white; border-radius:15px; padding:15px; margin-bottom:15px; box-shadow:0 5px 15px rgba(0,0,0,0.1); display:flex; align-items:center; justify-content:space-between; }
-.friend-info { display:flex; align-items:center; gap:10px; }
-.friend-info img { width:50px; height:50px; border-radius:50%; }
-.online-dot { width:12px; height:12px; border-radius:50%; background:green; display:inline-block; }
 .chat-window { background:#fff; border-radius:15px; padding:15px; max-height:400px; overflow-y:auto; margin-bottom:10px; }
-.chat-message { margin-bottom:10px; padding:5px 10px; border-radius:10px; background:#f1f1f1; max-width:80%; }
-.chat-message.me { background:#ffdde1; margin-left:auto; }
+.chat-message { margin-bottom:10px; padding:5px 10px; border-radius:10px; background:#f1f1f1; max-width:80%; display:flex; gap:8px; align-items:flex-start; }
+.chat-message.me { background:#ffdde1; margin-left:auto; flex-direction:row-reverse; }
+.chat-message img { width:35px; height:35px; border-radius:50%; }
 input, button { padding:10px; border-radius:10px; border:1px solid #ccc; margin-top:5px; }
 button { background:#ff4081; color:white; border:none; cursor:pointer; }
 button:hover { background:#e91e63; }
+.attachments { display:flex; gap:5px; margin-bottom:5px; }
+.attachments input { display:none; }
 </style>
 </head>
 <body>
@@ -37,6 +36,13 @@ button:hover { background:#e91e63; }
 <div class="container">
   <h3 id="chatFriendName">Chat</h3>
   <div class="chat-window" id="chatWindow"></div>
+
+  <div class="attachments">
+    <label for="attachFile">📎</label>
+    <input type="file" id="attachFile" accept="image/*,video/*,audio/*">
+    <button id="recordBtn">🎤 Record</button>
+  </div>
+
   <input type="text" id="chatInput" placeholder="Type a message...">
   <button id="sendMsgBtn">Send</button>
 </div>
@@ -44,7 +50,7 @@ button:hover { background:#e91e63; }
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getFirestore, collection, getDocs, doc, addDoc, query, where, updateDoc, serverTimestamp, orderBy, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getFirestore, collection, getDocs, doc, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDLSjPvdhLP4Esh9i0k4Fbe5W3YUlHas94",
@@ -63,6 +69,11 @@ let currentUserId = "";
 let currentChatFriend = "";
 let currentChatFriendName = "";
 let currentChatFriendPic = "";
+let chatUnsub = null;
+
+// Audio recording
+let mediaRecorder = null;
+let audioChunks = [];
 
 // Load user info
 onAuthStateChanged(auth, async user => {
@@ -75,7 +86,6 @@ onAuthStateChanged(auth, async user => {
       document.getElementById("navUsername").innerText = data.username || "Username";
     }
 
-    // Load friend info from localStorage if redirected
     currentChatFriend = localStorage.getItem("chatFriendId") || "";
     currentChatFriendName = localStorage.getItem("chatFriendName") || "";
     currentChatFriendPic = localStorage.getItem("chatFriendPic") || "";
@@ -89,26 +99,58 @@ onAuthStateChanged(auth, async user => {
   }
 });
 
-// Go to main page
 function goToMain(){
   window.location.href="main.html";
 }
 
-// Start chat with selected friend
+// Upload file to Cloudinary
+async function uploadToCloudinary(file){
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("upload_preset", "voice upload");
+  const r = await fetch("https://api.cloudinary.com/v1_1/dcmudqqsp/upload",{method:"POST",body:fd});
+  const j = await r.json();
+  if(!j.secure_url) throw new Error("Upload failed");
+  return j.secure_url;
+}
+
+// Start chat
 async function startChat(friendId, friendName, friendPic){
   currentChatFriend = friendId;
+  currentChatFriendName = friendName;
+  currentChatFriendPic = friendPic;
+  document.getElementById("chatFriendName").innerText = friendName;
   document.getElementById("chatWindow").innerHTML="";
 
-  const chatQuery = query(collection(db,"messages"), orderBy("timestamp"));
-  onSnapshot(chatQuery, snap=>{
+  if(chatUnsub) chatUnsub();
+
+  const chatCollection = collection(db,"messages");
+  const chatQuery = query(chatCollection, orderBy("timestamp"));
+  chatUnsub = onSnapshot(chatQuery, snap=>{
     const chatWindow = document.getElementById("chatWindow");
     chatWindow.innerHTML="";
     snap.forEach(docu=>{
       const msg = docu.data();
-      if((msg.from===currentUserId && msg.to===currentChatFriend) || (msg.to===currentUserId && msg.from===currentChatFriend)) {
+      if((msg.from===currentUserId && msg.to===currentChatFriend) || (msg.to===currentUserId && msg.from===currentChatFriend)){
         const div = document.createElement("div");
         div.className = "chat-message" + (msg.from===currentUserId?" me":"");
-        div.innerHTML=`<strong>${msg.from===currentUserId?"Me":friendName}:</strong> ${msg.text}`;
+
+        let content = "";
+        if(msg.type==="text") content = msg.text;
+        else if(msg.type==="voice") content = `<audio controls src="${msg.fileUrl}"></audio>`;
+        else if(msg.type==="image") content = `<img src="${msg.fileUrl}" style="max-width:200px;">`;
+        else if(msg.type==="video") content = `<video controls src="${msg.fileUrl}" style="max-width:200px;"></video>`;
+
+        const profilePic = msg.from===currentUserId ? document.getElementById("navProfilePic").src : currentChatFriendPic;
+
+        div.innerHTML = `
+          ${msg.from!==currentUserId?`<img src="${profilePic}">`:""}
+          <div style="display:flex; flex-direction:column;">
+            <strong>${msg.from===currentUserId?"Me":currentChatFriendName}:</strong>
+            ${content}
+          </div>
+          ${msg.from===currentUserId?`<img src="${profilePic}">`:""}
+        `;
         chatWindow.appendChild(div);
       }
     });
@@ -116,7 +158,7 @@ async function startChat(friendId, friendName, friendPic){
   });
 }
 
-// Send message
+// Send text message
 document.getElementById("sendMsgBtn").onclick = async ()=>{
   const text = document.getElementById("chatInput").value.trim();
   if(!text || !currentChatFriend) return alert("Select a friend to chat");
@@ -124,10 +166,57 @@ document.getElementById("sendMsgBtn").onclick = async ()=>{
     from: currentUserId,
     to: currentChatFriend,
     text,
+    type:"text",
     timestamp: serverTimestamp(),
     read:false
   });
   document.getElementById("chatInput").value="";
+}
+
+// Handle file attachments
+document.getElementById("attachFile").onchange = async (e)=>{
+  const file = e.target.files[0];
+  if(!file || !currentChatFriend) return;
+  const url = await uploadToCloudinary(file);
+  let type = "image";
+  if(file.type.startsWith("audio")) type="voice";
+  else if(file.type.startsWith("video")) type="video";
+  await addDoc(collection(db,"messages"),{
+    from: currentUserId,
+    to: currentChatFriend,
+    fileUrl: url,
+    type,
+    timestamp: serverTimestamp(),
+    read:false
+  });
+  e.target.value="";
+}
+
+// Voice recording
+document.getElementById("recordBtn").onclick = async ()=>{
+  if(mediaRecorder && mediaRecorder.state==="recording"){
+    mediaRecorder.stop();
+    return;
+  }
+  if(!navigator.mediaDevices) return alert("No microphone found");
+  const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+  mediaRecorder = new MediaRecorder(stream);
+  audioChunks = [];
+  mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+  mediaRecorder.onstop = async ()=>{
+    const blob = new Blob(audioChunks, { type:"audio/mp3" });
+    const file = new File([blob], "voice.mp3", { type:"audio/mp3" });
+    const url = await uploadToCloudinary(file);
+    await addDoc(collection(db,"messages"),{
+      from: currentUserId,
+      to: currentChatFriend,
+      fileUrl: url,
+      type:"voice",
+      timestamp: serverTimestamp(),
+      read:false
+    });
+  }
+  mediaRecorder.start();
 }
 </script>
 </body>
