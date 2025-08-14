@@ -185,6 +185,12 @@
   </div>
 </div>
 
+
+
+
+
+<audio id="msgSound" src="notification.mp3" preload="auto"></audio>
+
 <script type="module">
 // ---------------- Firebase ----------------
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
@@ -206,9 +212,30 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// DOM elements
+const msgIcon = document.getElementById("messageIcon");
+const msgBadge = document.getElementById("msgNotifBadge");
+const chatModal = document.getElementById("chatModal");
+const chatBox = document.getElementById("chatBox");
+const chatWithTitle = document.getElementById("chatWith");
+const chatInput = document.getElementById("chatInput");
+const sendBtn = document.getElementById("sendMsgBtn");
+const msgSound = document.getElementById("msgSound");
+
+function goToMessages() {
+  const chatModal = document.getElementById("chatModal");
+  if(chatModal) chatModal.style.display = "flex";
+
+  const chatWith = document.getElementById("chatWith");
+  if(chatWith) chatWith.innerText = "Your Messages";
+
+  const chatInput = document.getElementById("chatInput");
+  if(chatInput) chatInput.value = "";
+}
+
 // ---------------- Cloudinary ----------------
 const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dcmudqqsp/upload";
-const CLOUDINARY_PRESET = "voice upload";
+const CLOUDINARY_PRESET = "music upload";
 
 // ---------------- Globals / State ----------------
 let me = null;
@@ -217,7 +244,6 @@ let meId = null;
 // ---------------- Helper ----------------
 const $ = sel => document.querySelector(sel);
 const el = (tag, html) => { const d = document.createElement(tag); d.innerHTML = html; return d; };
-const timeStr = ts => ts?.seconds ? new Date(ts.seconds*1000).toLocaleString() : "";
 
 // ---------------- Presence ----------------
 async function setActive(isActive){
@@ -245,6 +271,7 @@ onAuthStateChanged(auth, async (user)=>{
   bindPosts();
 });
 
+
 // ---------------- Users List ----------------
 function bindUsers(){
   const search = $("#searchUser");
@@ -253,7 +280,7 @@ function bindUsers(){
     const list = $("#usersList"); list.innerHTML="";
     snap.forEach(d=>{
       const u = d.data(); const uid = d.id;
-      if(uid===meId) return; // skip yourself
+      if(uid===meId) return; 
       if(q && !(u.username||"").toLowerCase().includes(q)) return;
 
       const card = el("div", `
@@ -286,15 +313,12 @@ window.bindUsers = bindUsers;
 
 // ---------------- Start Message ----------------
 window.startMessage = function(friendId, friendName, friendPic, event){
-  event.stopPropagation(); // prevent also opening profile
-  // Save friend info to localStorage for message.html
+  event.stopPropagation(); 
   localStorage.setItem("chatFriendId", friendId);
   localStorage.setItem("chatFriendName", friendName);
   localStorage.setItem("chatFriendPic", friendPic);
-  // Go to message page
   window.location.href = "message.html";
 }
-
 
 // ---------------- View User Profile ----------------
 async function viewUserProfile(uid){
@@ -314,18 +338,15 @@ async function viewUserProfile(uid){
   `;
   openModal("viewUserModal");
 }
-
 window.viewUserProfile = viewUserProfile;
 
 function startChat(uid, username){
-  // Redirect to message.html and pass user ID and name in URL
   const params = new URLSearchParams();
   params.set("peerId", uid);
   params.set("peerName", username);
   window.location.href = "message.html?" + params.toString();
 }
 window.startChat = startChat;
-
 
 // ---------------- Friend Requests ----------------
 window.sendFriendRequest = async (friendId,event)=>{
@@ -338,7 +359,6 @@ window.sendFriendRequest = async (friendId,event)=>{
   const friendDoc = await getDoc(doc(db,"users",friendId));
   const friendUsername = friendDoc.exists()?friendDoc.data().username:"User";
 
-  // Add friend request
   await addDoc(collection(db,"friendRequests"),{
     from:meId,
     fromUsername:me.username||"User",
@@ -348,7 +368,6 @@ window.sendFriendRequest = async (friendId,event)=>{
     createdAt:serverTimestamp()
   });
 
-  // Add notification
   await addDoc(collection(db,"notifications"),{
     to:friendId,
     from:meId,
@@ -372,7 +391,7 @@ function bindNotifications(){
       const n = d.data();
       const row = el("div", `
         <div class="notif">
-          <img class="mini" src="${n.fromPhoto||'https://i.ibb.co/4pVBB1K/default-avatar.png'}">
+          <img class="mini" src="${n.fromPhoto||'logo.jpg'}">
           <div><strong>${n.fromName||'Someone'}</strong> ${n.text||''}</div>
         </div>
       `);
@@ -386,19 +405,25 @@ window.bindNotifications = bindNotifications;
 function bindPosts(){
   const q = query(collection(db,"posts"), orderBy("timestamp","desc"));
   onSnapshot(q, snap=>{
-    const feed = $("#postsList"); feed.innerHTML="";
+    const feed = $("#postsList"); 
+    feed.innerHTML="";
+
     snap.forEach(async d=>{
-      const p = d.data(); const id=d.id;
-      const likedBy = p.likedBy||[]; 
+      const p = d.data(); 
+      const id = d.id;
+      const likedBy = p.likedBy || []; 
       const iLiked = likedBy.includes(meId);
-      const isOwner = p.userId===meId;
 
       let mediaHtml = "";
       if(p.fileUrl){
-        const ext = p.fileUrl.split('.').pop().toLowerCase();
+        const ext = (p.fileUrl.split('.').pop() || "").toLowerCase();
         if(['mp4','webm','ogg'].includes(ext)){
           mediaHtml = `<video class="post-media" src="${p.fileUrl}" controls></video>`;
-        }else{
+        } else if(['mp3','wav','ogg'].includes(ext)){
+          mediaHtml = `<audio class="post-media" src="${p.fileUrl}" controls></audio>`;
+        } else if(['pdf','doc','docx'].includes(ext)){
+          mediaHtml = `<a href="${p.fileUrl}" target="_blank" class="post-file">Download ${ext.toUpperCase()}</a>`;
+        } else {
           mediaHtml = `<img class="post-media" src="${p.fileUrl}" alt="post">`;
         }
       }
@@ -406,13 +431,13 @@ function bindPosts(){
       const post = el("div", `
         <div class="card" id="post-${id}">
           <div class="user-chip" onclick="viewUserProfile('${p.userId}')">
-            <img class="mini" src="${p.userProfile||'https://i.ibb.co/4pVBB1K/default-avatar.png'}">
+            <img class="mini" src="${p.userProfile||'https://logo.jpg'}">
             <div><strong>${p.username}</strong></div>
           </div>
-          <p>${p.text||""}</p>
+          <p>${p.text || ""}</p>
           ${mediaHtml}
           <div class="row">
-            <button onclick="toggleLike('${id}')">${iLiked?'💗':'🤍'} Like (${likedBy.length})</button>
+            <button onclick="toggleLike('${id}')">${iLiked ? '💗' : '🤍'} Like (${likedBy.length})</button>
             <button onclick="focusComment('${id}')">💬 Comment</button>
           </div>
           <div id="likes-${id}" class="likes"></div>
@@ -423,6 +448,7 @@ function bindPosts(){
           </div>
         </div>
       `);
+
       feed.appendChild(post);
       bindComments(id);
       bindLikes(id, likedBy);
@@ -440,7 +466,7 @@ function bindLikes(postId, likedBy){
     if(uDoc.exists()){
       const u = uDoc.data();
       const img = el("img", ""); 
-      img.src = u.profilePic || "https://i.ibb.co/4pVBB1K/default-avatar.png";
+      img.src = u.profilePic || "logo.jpg";
       img.className = "mini";
       img.title = u.username || "User";
       img.onclick = ()=>viewUserProfile(uid);
@@ -458,7 +484,7 @@ function bindComments(postId){
     const all = snap.docs.map(d=>({id:d.id,...d.data()}));
     holder.innerHTML = all.map(c=>`
       <div class="comment">
-        <img class="mini" src="${c.userPhoto||'https://i.ibb.co/4pVBB1K/default-avatar.png'}" onclick="viewUserProfile('${c.userId}')">
+        <img class="mini" src="${c.userPhoto||'logo.jpg'}" onclick="viewUserProfile('${c.userId}')">
         <strong>${c.username}</strong>: ${c.text}
       </div>
     `).join("");
@@ -472,7 +498,7 @@ function openProfile(){
   $("#pSurname").value = me.surname||""; 
   $("#pUsername").value=me.username||""; 
   $("#pDob").value = me.dob||"";
-  $("#pPicPreview").src = me.profilePic || "https://i.ibb.co/4pVBB1K/default-avatar.png";
+  $("#pPicPreview").src = me.profilePic || "logo.jpg";
   openModal("profileModal");
 }
 window.openProfile = openProfile;
@@ -489,7 +515,7 @@ window.saveProfile = async ()=>{
 
   await updateDoc(doc(db,"users",meId),{firstName,surname,username,dob,profilePic:photo});
   me={...me,firstName,surname,username,dob,profilePic:photo};
-  $("#navProfilePic").src = photo||"https://i.ibb.co/4pVBB1K/default-avatar.png";
+  $("#navProfilePic").src = photo||"logo.jpg";
   $("#navUsername").textContent=username||"Username";
   closeModal("profileModal");
 };

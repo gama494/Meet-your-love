@@ -40,6 +40,7 @@ button:hover { background:#e91e63; }
     <button onclick="goToMain()">Home</button>
   </div>
 </nav>
+<audio id="msgSound" src="notification.mp3" preload="auto"></audio>
 
 <div class="container">
   <h3 id="chatFriendName">Chat</h3>
@@ -66,7 +67,7 @@ button:hover { background:#e91e63; }
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getFirestore, collection, getDocs, addDoc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getFirestore, collection, doc, getDoc, addDoc, query, orderBy, onSnapshot, serverTimestamp, where } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDLSjPvdhLP4Esh9i0k4Fbe5W3YUlHas94",
@@ -96,9 +97,10 @@ let timerInterval = null;
 onAuthStateChanged(auth, async user => {
   if(user){
     currentUserId = user.uid;
-    const userDoc = await getDocs(collection(db,"users"));
-    const data = userDoc.docs.find(d=>d.id===user.uid)?.data();
-    if(data){
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+    if(userSnap.exists()){
+      const data = userSnap.data();
       document.getElementById("navProfilePic").src = data.profilePic || "https://i.ibb.co/default-profile.png";
       document.getElementById("navUsername").innerText = data.username || "Username";
     }
@@ -111,6 +113,10 @@ onAuthStateChanged(auth, async user => {
       document.getElementById("chatFriendName").innerText = currentChatFriendName || "Chat";
       startChat(currentChatFriend, currentChatFriendName, currentChatFriendPic);
     }
+    
+    // Start global message listener for sound
+    listenGlobalMessages();
+    
   } else window.location.href="index.html";
 });
 
@@ -166,7 +172,6 @@ function startChat(friendId, friendName, friendPic){
         `;
         chatWindow.appendChild(div);
 
-        // Attach zoom for images/videos
         div.querySelectorAll(".zoomable").forEach(el=>{
           el.addEventListener("click", ()=> openMediaModal(el.src, el.tagName.toLowerCase()));
         });
@@ -212,8 +217,21 @@ document.getElementById("attachFile").onchange = async (e)=>{
   });
   e.target.value="";
 }
+
 window.closeMediaModal = function() {
   document.getElementById("mediaModal").style.display = "none";
+}
+
+// Listen for all incoming messages to me
+function listenGlobalMessages() {
+  const q = query(collection(db, "messages"), where("to", "==", currentUserId));
+  onSnapshot(q, snap => {
+    snap.docChanges().forEach(change => {
+      if(change.type === "added"){
+        document.getElementById("msgSound").play();
+      }
+    });
+  });
 }
 
 // Media Modal
