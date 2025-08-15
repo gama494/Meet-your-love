@@ -39,12 +39,14 @@ button:hover { background:#e91e63; }
   <div>
     <button onclick="goToMain()">Home</button>
   </div>
-  <div id="callButtons" style="margin-bottom:10px;">
-    <button id="phoneCallBtn" title="Audio Call">📞</button>
-    <button id="videoCallBtn" title="Video Call">🎥</button>
+    <!-- 4K Call Icon Button -->
+    <button id="callBtn" style="background:none; border:none; cursor:pointer;">
+      <img src="https://cdn-icons-png.flaticon.com/512/483/483947.png" 
+           alt="Call" 
+           style="width:40px; height:40px;">
+    </button>
   </div>
 </nav>
-
 <audio id="msgSound" src="notification.mp3" preload="auto"></audio>
 
 <div class="container">
@@ -72,7 +74,7 @@ button:hover { background:#e91e63; }
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getFirestore, collection, doc, getDoc, addDoc, query, orderBy, onSnapshot, serverTimestamp, where, updateDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getFirestore, collection, doc, getDoc, addDoc, query, orderBy, onSnapshot, serverTimestamp, where } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDLSjPvdhLP4Esh9i0k4Fbe5W3YUlHas94",
@@ -93,71 +95,81 @@ let currentChatFriendName = "";
 let currentChatFriendPic = "";
 let chatUnsub = null;
 
-// --- Load user info ---
+let mediaRecorder = null;
+let audioChunks = [];
+let seconds = 0;
+let timerInterval = null;
+
+
+const callBtn = document.getElementById("callBtn");
+
+callBtn.onclick = () => {
+  // Set friend ID and call type
+  localStorage.setItem("callFriendId", "FRIEND_USER_ID"); // replace with real friend ID
+  localStorage.setItem("callType", "video"); // or 'audio'
+
+  // Redirect to call.html
+  window.location.href = "call.html";
+}
+
+// Load user info
 onAuthStateChanged(auth, async user => {
-  if(!user) return window.location.href="index.html";
-  currentUserId = user.uid;
+  if(user){
+    currentUserId = user.uid;
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+    if(userSnap.exists()){
+      const data = userSnap.data();
+      document.getElementById("navProfilePic").src = data.profilePic || "https://i.ibb.co/default-profile.png";
+      document.getElementById("navUsername").innerText = data.username || "Username";
+    }
 
-  const userRef = doc(db,"users",user.uid);
-  const userSnap = await getDoc(userRef);
-  if(userSnap.exists()){
-    const data = userSnap.data();
-    document.getElementById("navProfilePic").src = data.profilePic || "https://i.ibb.co/default-profile.png";
-    document.getElementById("navUsername").innerText = data.username || "Username";
-  }
+    currentChatFriend = localStorage.getItem("chatFriendId") || "";
+    currentChatFriendName = localStorage.getItem("chatFriendName") || "";
+    currentChatFriendPic = localStorage.getItem("chatFriendPic") || "";
 
-  currentChatFriend = localStorage.getItem("chatFriendId") || "";
-  currentChatFriendName = localStorage.getItem("chatFriendName") || "";
-  currentChatFriendPic = localStorage.getItem("chatFriendPic") || "";
-
-  if(currentChatFriend){
-    document.getElementById("chatFriendName").innerText = currentChatFriendName || "Chat";
-    startChat(currentChatFriend, currentChatFriendName, currentChatFriendPic);
-  }
-
-  listenGlobalMessages();
-  listenIncomingCalls();
-
-  // Navbar call buttons
-  document.getElementById("phoneCallBtn").onclick = () => {
-      if(!currentChatFriend) return alert("Select a friend to call");
-      startCall(currentChatFriend, "audio");
-  };
-  document.getElementById("videoCallBtn").onclick = () => {
-      if(!currentChatFriend) return alert("Select a friend to call");
-      startCall(currentChatFriend, "video");
-  };
+    if(currentChatFriend){
+      document.getElementById("chatFriendName").innerText = currentChatFriendName || "Chat";
+      startChat(currentChatFriend, currentChatFriendName, currentChatFriendPic);
+    }
+    
+    // Start global message listener for sound
+    listenGlobalMessages();
+    
+  } else window.location.href="index.html";
 });
 
 function goToMain(){ window.location.href="main.html"; }
 
-// --- Upload to Cloudinary ---
+
+
+
+// Upload to Cloudinary
 async function uploadToCloudinary(file){
   if(!confirm(`Send ${file.name}?`)) return null;
   const fd = new FormData();
   fd.append("file", file);
-  fd.append("upload_preset", "voice upload");
+  fd.append("upload_preset", "voice upload"); // Replace with your preset
   const r = await fetch("https://api.cloudinary.com/v1_1/dcmudqqsp/upload",{method:"POST",body:fd});
   const j = await r.json();
   return j.secure_url;
 }
 
-// --- Start chat ---
+// Start chat
 function startChat(friendId, friendName, friendPic){
   currentChatFriend = friendId;
   currentChatFriendName = friendName;
   currentChatFriendPic = friendPic;
   document.getElementById("chatFriendName").innerText = friendName;
-
   const chatWindow = document.getElementById("chatWindow");
-  chatWindow.innerHTML = "";
+  chatWindow.innerHTML="";
 
   if(chatUnsub) chatUnsub();
 
   const chatCollection = collection(db,"messages");
   const chatQuery = query(chatCollection, orderBy("timestamp"));
   chatUnsub = onSnapshot(chatQuery, snap=>{
-    chatWindow.innerHTML = "";
+    chatWindow.innerHTML="";
     snap.forEach(docu=>{
       const msg = docu.data();
       if((msg.from===currentUserId && msg.to===currentChatFriend) || (msg.to===currentUserId && msg.from===currentChatFriend)){
@@ -172,30 +184,26 @@ function startChat(friendId, friendName, friendPic){
         else if(msg.type==="video") content = `<video src="${msg.fileUrl}" controls class="zoomable"></video>`;
         else if(msg.type==="pdf" || msg.type==="doc") content = `<a href="${msg.fileUrl}" class="pdf-link" target="_blank">📄 ${msg.fileUrl.split("/").pop()}</a>`;
 
-        const callIcons = `
-          <span style="margin-left:10px; cursor:pointer;" onclick="startCall('${msg.from}','audio')">📞</span>
-          <span style="margin-left:5px; cursor:pointer;" onclick="startCall('${msg.from}','video')">🎥</span>
-        `;
-
         div.innerHTML = `
           ${msg.from!==currentUserId?`<img src="${profilePic}" class="profile">`:""}
           <div style="display:flex; flex-direction:column;">
             <strong>${msg.from===currentUserId?"Me":currentChatFriendName}:</strong>
             ${content}
           </div>
-          ${callIcons}
           ${msg.from===currentUserId?`<img src="${profilePic}" class="profile">`:""}
         `;
         chatWindow.appendChild(div);
 
-        div.querySelectorAll(".zoomable").forEach(el=>{ el.addEventListener("click", ()=> openMediaModal(el.src, el.tagName.toLowerCase())); });
+        div.querySelectorAll(".zoomable").forEach(el=>{
+          el.addEventListener("click", ()=> openMediaModal(el.src, el.tagName.toLowerCase()));
+        });
       }
     });
     chatWindow.scrollTop = chatWindow.scrollHeight;
   });
 }
 
-// --- Send text ---
+// Send text
 document.getElementById("sendMsgBtn").onclick = async ()=>{
   const text = document.getElementById("chatInput").value.trim();
   if(!text || !currentChatFriend) return alert("Select a friend to chat");
@@ -210,7 +218,7 @@ document.getElementById("sendMsgBtn").onclick = async ()=>{
   document.getElementById("chatInput").value="";
 }
 
-// --- File attachment ---
+// File attachment
 document.getElementById("attachFile").onchange = async (e)=>{
   const file = e.target.files[0];
   if(!file || !currentChatFriend) return;
@@ -232,7 +240,23 @@ document.getElementById("attachFile").onchange = async (e)=>{
   e.target.value="";
 }
 
-// --- Media Modal ---
+window.closeMediaModal = function() {
+  document.getElementById("mediaModal").style.display = "none";
+}
+
+// Listen for all incoming messages to me
+function listenGlobalMessages() {
+  const q = query(collection(db, "messages"), where("to", "==", currentUserId));
+  onSnapshot(q, snap => {
+    snap.docChanges().forEach(change => {
+      if(change.type === "added"){
+        document.getElementById("msgSound").play();
+      }
+    });
+  });
+}
+
+// Media Modal
 function openMediaModal(url,type){
   const modal = document.getElementById("mediaModal");
   const content = document.getElementById("mediaContent");
@@ -244,19 +268,19 @@ function openMediaModal(url,type){
 }
 function closeMediaModal(){ document.getElementById("mediaModal").style.display="none"; }
 
-// --- Voice recorder ---
+// Voice recorder
 const recordBtn = document.getElementById("recordBtn");
 const voiceTimer = document.getElementById("voiceTimer");
-let mediaRecorder = null;
-let timerInterval = null;
-
 recordBtn.onclick = async ()=>{
-  if(mediaRecorder && mediaRecorder.state==="recording"){ mediaRecorder.stop(); return; }
+  if(mediaRecorder && mediaRecorder.state==="recording"){
+    mediaRecorder.stop();
+    return;
+  }
   if(!navigator.mediaDevices) return alert("No microphone found");
   const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
   mediaRecorder = new MediaRecorder(stream);
-  let audioChunks = [];
-  let seconds = 0;
+  audioChunks = [];
+  seconds=0;
   voiceTimer.innerText="00:00";
 
   mediaRecorder.ondataavailable = e=>audioChunks.push(e.data);
@@ -285,98 +309,87 @@ recordBtn.onclick = async ()=>{
   },1000);
 }
 
-// --- Listen for incoming messages ---
-function listenGlobalMessages(){
-  const q = query(collection(db,"messages"), where("to","==",currentUserId));
-  onSnapshot(q,snap=>{
-    snap.docChanges().forEach(change=>{
-      if(change.type==="added"){
-        document.getElementById("msgSound").play();
-      }
-    });
-  });
-}
 
-// --- Call functions ---
-async function startCall(friendId,type){
-  if(!friendId) return alert("No friend selected for call");
-  const callDoc = await addDoc(collection(db,"calls"),{
-    from: currentUserId,
-    to: friendId,
-    type: type,
-    answered: false,
-    ended: false,
-    timestamp: serverTimestamp()
-  });
-  localStorage.setItem("callFriendId", friendId);
-  localStorage.setItem("callType", type);
-  window.location.href="call.html";
-}
+// --- Call Notification ---
+const notificationContainer = document.createElement("div");
+notificationContainer.id = "callNotification";
+notificationContainer.style.position = "fixed";
+notificationContainer.style.bottom = "20px";
+notificationContainer.style.right = "20px";
+notificationContainer.style.background = "#00ffea";
+notificationContainer.style.color = "#121212";
+notificationContainer.style.padding = "15px";
+notificationContainer.style.borderRadius = "10px";
+notificationContainer.style.boxShadow = "0 0 15px rgba(0,255,234,0.5)";
+notificationContainer.style.display = "none";
+notificationContainer.style.flexDirection = "column";
+notificationContainer.style.gap = "10px";
+notificationContainer.style.zIndex = "999";
+document.body.appendChild(notificationContainer);
 
-// --- Listen for incoming calls ---
+const messageText = document.createElement("span");
+messageText.innerText = "Incoming Call";
+notificationContainer.appendChild(messageText);
+
+const btnContainer = document.createElement("div");
+btnContainer.style.display = "flex";
+btnContainer.style.gap = "10px";
+notificationContainer.appendChild(btnContainer);
+
+const acceptBtn = document.createElement("button");
+acceptBtn.innerText = "Accept";
+acceptBtn.style.background = "#00cbbd";
+acceptBtn.style.color = "#121212";
+acceptBtn.style.border = "none";
+acceptBtn.style.padding = "8px 15px";
+acceptBtn.style.borderRadius = "8px";
+acceptBtn.style.cursor = "pointer";
+btnContainer.appendChild(acceptBtn);
+
+const declineBtn = document.createElement("button");
+declineBtn.innerText = "Decline";
+declineBtn.style.background = "#ff4d4d";
+declineBtn.style.color = "#121212";
+declineBtn.style.border = "none";
+declineBtn.style.padding = "8px 15px";
+declineBtn.style.borderRadius = "8px";
+declineBtn.style.cursor = "pointer";
+btnContainer.appendChild(declineBtn);
+
 function listenIncomingCalls(){
-  const q = query(collection(db,"calls"), where("to","==",currentUserId), where("answered","==",false));
-  onSnapshot(q,snap=>{
-    snap.docChanges().forEach(async change=>{
-      if(change.type==="added"){
-        const callData = change.doc.data();
-        const callId = change.doc.id;
-        const callerSnap = await getDoc(doc(db,"users",callData.from));
-        const callerData = callerSnap.exists() ? callerSnap.data() : {};
-        showIncomingCallPopup(callData, callId, callerData);
-      }
-    });
+  const callRef = doc(db, "calls", currentUserId);
+  onSnapshot(callRef, async (docSnap)=>{
+    const data = docSnap.data();
+    if(!data) return;
+    if(data.callerId && !data.answered && !data.ended){
+      notificationContainer.style.display = "flex";
+      messageText.innerText = `Incoming call from ${data.callerName || "Friend"}`;
+    } else {
+      notificationContainer.style.display = "none";
+    }
   });
 }
 
-// --- Incoming call popup ---
-function showIncomingCallPopup(callData, callId, callerData){
-  const ringtone = new Audio("https://cdn.pixabay.com/download/audio/2023/03/15/audio_56c8d6a3.mp3");
-  ringtone.loop = true;
-  ringtone.play().catch(e=>console.log("Ringtone failed", e));
+acceptBtn.onclick = async ()=>{
+  const callRef = doc(db, "calls", currentUserId);
+  const callData = (await getDoc(callRef)).data();
+  if(!callData) return;
+  await updateDoc(callRef, { answered:true });
+  localStorage.setItem("callFriendId", callData.callerId);
+  localStorage.setItem("callType", callData.callType || "video");
+  window.location.href="call.html";
+};
 
-  const popup = document.createElement("div");
-  popup.id = "incomingCallPopup";
-  popup.style.position="fixed";
-  popup.style.bottom="20px";
-  popup.style.right="20px";
-  popup.style.background="#ff4081";
-  popup.style.color="white";
-  popup.style.padding="15px";
-  popup.style.borderRadius="15px";
-  popup.style.zIndex="9999";
-  popup.style.maxWidth="250px";
-  popup.style.fontFamily="sans-serif";
-  popup.innerHTML = `
-    <div style="display:flex; align-items:center; gap:10px;">
-      <img src="${callerData.profilePic || 'https://i.ibb.co/default-profile.png'}" style="width:50px; height:50px; border-radius:50%;">
-      <div>
-        <strong>${callerData.username || 'Unknown'}</strong><br>
-        ${callData.type==='video'?'Video Call':'Audio Call'}
-      </div>
-    </div>
-    <div style="margin-top:10px; display:flex; justify-content:space-between;">
-      <button id="answerCallBtn">Answer</button>
-      <button id="declineCallBtn">Decline</button>
-    </div>
-  `;
-  document.body.appendChild(popup);
+declineBtn.onclick = async ()=>{
+  const callRef = doc(db, "calls", currentUserId);
+  await updateDoc(callRef, { ended:true });
+  notificationContainer.style.display = "none";
+};
 
-  document.getElementById("answerCallBtn").onclick = async ()=>{
-    ringtone.pause();
-    await updateDoc(doc(db,"calls",callId),{answered:true});
-    localStorage.setItem("callFriendId", callData.from);
-    localStorage.setItem("callType", callData.type);
-    window.location.href="call.html";
-  }
+// --- Existing Chat and Media Code ---
+// Upload to Cloudinary, startChat, sendMsgBtn, attachFile, mediaModal, voice recorder
+// Keep your previous functions as-is here...
 
-  document.getElementById("declineCallBtn").onclick = async ()=>{
-    ringtone.pause();
-    await updateDoc(doc(db,"calls",callId),{ended:true});
-    popup.remove();
-  }
-}
 </script>
-
 </body>
 </html>

@@ -1,196 +1,217 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Call - Meet Your Love</title>
-<style>
-body { font-family:'Segoe UI',sans-serif; margin:0; padding:0; background:#121212; color:white; text-align:center; }
-#callScreen { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; gap:10px; }
-video { border-radius:10px; background:black; width:300px; height:200px; }
-button { padding:10px 20px; border:none; border-radius:10px; margin:5px; cursor:pointer; background:#ff4081; color:white; }
-button:hover{ background:#e91e63; }
-#callTimer { font-size:18px; margin-top:5px; }
-</style>
+  <meta charset="UTF-8">
+  <title>Call</title>
+  <style>
+    body {
+      background:#121212;
+      color:white;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      height:100vh;
+      font-family:'Segoe UI', sans-serif;
+    }
+    h2 {
+      margin-bottom:20px;
+      color:#00ffea;
+      text-shadow:0 0 10px #00ffea;
+    }
+    video {
+      width:320px;
+      height:240px;
+      border-radius:12px;
+      margin:10px;
+      background:black;
+      box-shadow:0 0 20px rgba(0,255,234,0.5);
+    }
+    #controls {
+      margin-top:20px;
+      display:flex;
+      align-items:center;
+      gap:15px;
+    }
+    button {
+      background:#00ffea;
+      border:none;
+      border-radius:8px;
+      padding:10px 20px;
+      font-size:16px;
+      cursor:pointer;
+      color:#121212;
+      transition: transform 0.2s, background 0.2s;
+    }
+    button:hover { transform:scale(1.05); background:#00cbbd; }
+    label { display:flex; align-items:center; gap:8px; font-size:14px; }
+    #timer { font-size:22px; margin-top:15px; color:#00ffea; text-shadow:0 0 5px #00ffea; }
+  </style>
 </head>
 <body>
+  <h2 id="callStatus">Connecting...</h2>
+  <video id="localVideo" autoplay muted></video>
+  <video id="remoteVideo" autoplay></video>
 
-<div id="callScreen">
-  <h2 id="callTitle">Calling...</h2>
-  <video id="remoteVideo" autoplay playsinline></video>
-  <video id="localVideo" autoplay playsinline muted></video>
-  <div>
+  <div id="controls">
     <button id="muteBtn">Mute</button>
-    <button id="switchBtn">Switch Video</button>
-    <button id="hangupBtn">Hangup</button>
+    <label>🔊 Volume:
+      <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="1">
+    </label>
+    <button id="endCallBtn">End Call</button>
   </div>
-  <div id="callTimer">00:00</div>
-  <audio id="ringTone" loop></audio>
-</div>
+  <div id="timer">00:00</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getFirestore, collection, doc, setDoc, updateDoc, onSnapshot, addDoc, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot, arrayUnion } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
-// ----- Firebase config -----
 const firebaseConfig = {
-  apiKey: "AIzaSyDLSjPvdhLP4Esh9i0k4Fbe5W3YUlHas94",
-  authDomain: "meet-your-love-3c2e9.firebaseapp.com",
-  projectId: "meet-your-love-3c2e9",
-  storageBucket: "meet-your-love-3c2e9.appspot.com",
-  messagingSenderId: "762275409257",
-  appId: "1:762275409257:web:374c366cfea5b01dae21f8"
+  apiKey:"AIzaSyDLSjPvdhLP4Esh9i0k4Fbe5W3YUlHas94",
+  authDomain:"meet-your-love-3c2e9.firebaseapp.com",
+  projectId:"meet-your-love-3c2e9",
+  storageBucket:"meet-your-love-3c2e9.appspot.com",
+  messagingSenderId:"762275409257",
+  appId:"1:762275409257:web:374c366cfea5b01dae21f8"
 };
 
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
 const db = getFirestore(app);
 
-// ----- DOM -----
-const callTitle = document.getElementById("callTitle");
+let localStream, peerConnection;
+const config = { iceServers:[{urls:"stun:stun.l.google.com:19302"}] };
+
+const callFriendId = localStorage.getItem("callFriendId"); 
+const callType = localStorage.getItem("callType") || 'video';
+
+const callStatus = document.getElementById("callStatus");
 const localVideo = document.getElementById("localVideo");
 const remoteVideo = document.getElementById("remoteVideo");
-const ringTone = document.getElementById("ringTone");
 const muteBtn = document.getElementById("muteBtn");
-const switchBtn = document.getElementById("switchBtn");
-const hangupBtn = document.getElementById("hangupBtn");
-const callTimerEl = document.getElementById("callTimer");
+const endCallBtn = document.getElementById("endCallBtn");
+const timerDisplay = document.getElementById("timer");
+const volumeSlider = document.getElementById("volumeSlider");
 
-// ----- State -----
-let currentUserId = "";
-let callFriendId = localStorage.getItem("callFriendId");
-let callFriendName = localStorage.getItem("callFriendName");
-let callType = localStorage.getItem("callType") || "audio"; // "audio" or "video"
-let pc = null;
-let localStream = null;
-let remoteStream = new MediaStream();
-let callId = crypto.randomUUID();
-let callSeconds = 0;
-let callInterval = null;
-const iceServers = [{urls:"stun:stun.l.google.com:19302"}];
+let isMuted = false;
+let seconds=0, minutes=0;
+let timerInterval;
+let remoteDescSet = false;
+let pendingCandidates = [];
 
-// ----- Setup -----
-remoteVideo.srcObject = remoteStream;
-callTitle.textContent = `Calling ${callFriendName}...`;
-ringTone.src = "https://actions.google.com/sounds/v1/alarms/phone_alerts.ogg";
-ringTone.play();
+// Mute mic
+muteBtn.onclick = () => {
+  isMuted = !isMuted;
+  if(localStream) localStream.getAudioTracks()[0].enabled = !isMuted;
+  muteBtn.textContent = isMuted ? "Unmute" : "Mute";
+};
 
-// ----- Auth -----
-onAuthStateChanged(auth, async user=>{
-  if(!user) return window.location.href="index.html";
-  currentUserId = user.uid;
-  startCall();
-});
-
-// ----- Functions -----
-async function startCall(){
-  // Get local media
-  localStream = await navigator.mediaDevices.getUserMedia({
-    audio:true,
-    video: callType==="video"
-  });
-  localStream.getTracks().forEach(track=> pcAddTrack(track));
-
-  localVideo.srcObject = localStream;
-  if(callType==="audio") localVideo.style.display="none";
-
-  // Create peer connection
-  pc = new RTCPeerConnection({iceServers});
-  pc.ontrack = e=> e.streams[0].getTracks().forEach(t=>remoteStream.addTrack(t));
-  pc.onicecandidate = e=>{
-    if(e.candidate){
-      addDoc(collection(db, "calls", callId, "candidates"), e.candidate.toJSON());
-    }
-  };
-
-  // Create call doc
-  const callDoc = doc(db, "calls", callId);
-  await setDoc(callDoc, {
-    from: currentUserId,
-    to: callFriendId,
-    type: callType,
-    timestamp: serverTimestamp(),
-    answered:false,
-    ended:false
-  });
-
-  // Offer
-  const offer = await pc.createOffer();
-  await pc.setLocalDescription(offer);
-  await updateDoc(callDoc, {offer});
-
-  // Listen for answer
-  onSnapshot(callDoc, snap=>{
-    const data = snap.data();
-    if(!data) return;
-    if(data.answer && !pc.currentRemoteDescription){
-      pc.setRemoteDescription(data.answer);
-      ringTone.pause();
-      startTimer();
-      callTitle.textContent = `In Call with ${callFriendName}`;
-    }
-    if(data.ended){
-      endCall();
-    }
-  });
-
-  // Listen for remote ICE
-  const candidatesCol = collection(callDoc, "candidates");
-  onSnapshot(candidatesCol, snap=>{
-    snap.docChanges().forEach(ch=>{
-      if(ch.type==="added"){
-        pc.addIceCandidate(new RTCIceCandidate(ch.doc.data()));
-      }
-    });
-  });
-}
-
-function pcAddTrack(track){
-  if(!pc) return;
-  pc.addTrack(track, localStream);
-}
+// Remote volume
+volumeSlider.oninput = () => {
+  remoteVideo.volume = volumeSlider.value;
+};
 
 // Timer
-function startTimer(){
-  callSeconds=0;
-  callInterval = setInterval(()=>{
-    callSeconds++;
-    const m = String(Math.floor(callSeconds/60)).padStart(2,'0');
-    const s = String(callSeconds%60).padStart(2,'0');
-    callTimerEl.textContent = `${m}:${s}`;
+function startTimer() {
+  timerInterval = setInterval(()=>{
+    seconds++;
+    if(seconds>=60){ minutes++; seconds=0; }
+    timerDisplay.textContent = `${minutes<10?'0'+minutes:minutes}:${seconds<10?'0'+seconds:seconds}`;
   },1000);
 }
 
-// Controls
-muteBtn.onclick = ()=> {
-  if(!localStream) return;
-  localStream.getAudioTracks().forEach(t=> t.enabled = !t.enabled);
-  muteBtn.textContent = localStream.getAudioTracks()[0].enabled?"Mute":"Unmute";
-}
-
-switchBtn.onclick = async ()=>{
-  if(!localStream) return;
-  const videoTrack = localStream.getVideoTracks()[0];
-  if(!videoTrack) return;
-  videoTrack.enabled = !videoTrack.enabled;
-  switchBtn.textContent = videoTrack.enabled?"Switch Off Video":"Switch On Video";
-}
-
-hangupBtn.onclick = async ()=>{
-  const callDoc = doc(db,"calls",callId);
-  await updateDoc(callDoc,{ended:true});
-  endCall();
-}
-
-function endCall(){
-  if(pc) pc.close();
+// End call
+endCallBtn.onclick = async () => {
+  peerConnection?.close();
   localStream?.getTracks().forEach(t=>t.stop());
-  pc=null;
-  clearInterval(callInterval);
+  clearInterval(timerInterval);
+
+  const callRef = doc(db,"calls",callFriendId);
+  await setDoc(callRef,{ended:true},{merge:true});
   window.location.href="message.html";
+};
+
+// Start media & peer connection
+async function startCallMedia(){
+  try{
+    localStream = await navigator.mediaDevices.getUserMedia({audio:true, video:callType==='video'});
+    localVideo.srcObject = localStream;
+
+    peerConnection = new RTCPeerConnection(config);
+    localStream.getTracks().forEach(track=>peerConnection.addTrack(track, localStream));
+
+    peerConnection.ontrack = e => { remoteVideo.srcObject = e.streams[0]; }
+
+    const callRef = doc(db,"calls",callFriendId);
+
+    // Listen for remote session & ICE
+    onSnapshot(callRef, async (docSnap)=>{
+      const data = docSnap.data();
+      if(!data) return;
+
+      // Set remote description safely
+      if(data.answer && !remoteDescSet){
+        if(data.answer.type && data.answer.sdp){
+          await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+          remoteDescSet = true;
+
+          // Add any pending ICE candidates
+          for(const c of pendingCandidates){
+            try{ await peerConnection.addIceCandidate(new RTCIceCandidate(c)); } catch(e){console.error(e);}
+          }
+          pendingCandidates=[];
+        }
+      }
+
+      // Queue ICE candidates if remoteDesc not yet set
+      if(data.candidates){
+        for(const c of data.candidates){
+          if(c){
+            if(remoteDescSet){
+              try{ await peerConnection.addIceCandidate(new RTCIceCandidate(c)); }
+              catch(e){console.error(e);}
+            } else {
+              pendingCandidates.push(c);
+            }
+          }
+        }
+      }
+    });
+
+    // ICE candidates
+    peerConnection.onicecandidate = e => {
+      if(e.candidate){
+        setDoc(callRef,{candidates:arrayUnion(e.candidate.toJSON())},{merge:true});
+      }
+    };
+
+    const callDoc = await getDoc(callRef);
+    if(!callDoc.exists()){
+      const offer = await peerConnection.createOffer();
+      await peerConnection.setLocalDescription(offer);
+      await setDoc(callRef,{offer:offer.toJSON(),candidates:[]});
+    } else {
+      const offerData = callDoc.data().offer;
+      if(offerData && offerData.type && offerData.sdp){
+        await peerConnection.setRemoteDescription(new RTCSessionDescription(offerData));
+        remoteDescSet = true;
+
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
+        await setDoc(callRef,{answer:answer.toJSON()},{merge:true});
+      }
+    }
+
+    callStatus.innerText="In Call";
+    startTimer();
+
+  } catch(e){
+    console.error(e);
+    alert("Failed to access media: "+e);
+    callStatus.innerText="Error";
+  }
 }
 
+startCallMedia();
 </script>
 </body>
 </html>
