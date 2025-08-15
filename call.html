@@ -1,47 +1,197 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Call</title>
-  <style>
-    body { background:#121212; color:white; text-align:center; padding-top:20px; }
-    video { width:300px; border-radius:10px; margin:5px; background:black; }
-    button { margin:5px; padding:8px 12px; border:none; border-radius:6px; cursor:pointer; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Call</title>
+<style>
+  body {
+    background:#121212;
+    font-family:'Segoe UI', sans-serif;
+    color:white;
+    margin:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-start;
+    height:100vh;
+  }
+  header {
+    width:100%;
+    padding:12px 16px;
+    background:#1f1f1f;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    box-shadow:0 2px 6px rgba(0,0,0,0.5);
+  }
+  header h2 { margin:0; font-size:18px; }
+  #timer { margin:10px 0; font-weight:600; }
+
+  .videos {
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10px;
+    flex:1;
+    overflow:auto;
+    width:100%;
+    max-width:480px;
+  }
+
+  video {
+    width:90%;
+    max-width:380px;
+    border-radius:14px;
+    background:black;
+    object-fit:cover;
+  }
+
+  .controls {
+    display:flex;
+    gap:12px;
+    margin:10px 0 20px;
+  }
+  button {
+    padding:10px 16px;
+    border:none;
+    border-radius:50%;
+    cursor:pointer;
+    font-size:18px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-shadow:0 2px 6px rgba(0,0,0,0.4);
+    transition:all 0.2s ease;
+  }
+  button:hover { transform:scale(1.1); }
+  #endBtn { background:red; color:white; }
+  #muteBtn, #videoBtn { background:#2a2a2a; color:white; }
+</style>
 </head>
 <body>
-  <h2>Call in progress...</h2>
-  <p id="timer">00:00</p>
-  <video id="localVideo" autoplay muted></video>
-  <video id="remoteVideo" autoplay></video>
-  <br>
-  <button id="muteBtn">🔇 Mute</button>
-  <button id="videoBtn">🎥 Switch to Video</button>
-  <button id="endBtn" style="background:red;color:white;">End Call</button>
 
-  <script>
-    let seconds = 0;
-    let muted = false;
-    let timerInt = setInterval(() => {
-      seconds++;
-      const m = String(Math.floor(seconds / 60)).padStart(2, "0");
-      const s = String(seconds % 60).padStart(2, "0");
-      document.getElementById("timer").innerText = `${m}:${s}`;
-    }, 1000);
+<header>
+  <h2>Call with <span id="friendName">Friend</span></h2>
+  <span id="callStatus">Connecting...</span>
+</header>
 
-    document.getElementById("muteBtn").onclick = () => {
-      muted = !muted;
-      document.getElementById("muteBtn").innerText = muted ? "🔊 Unmute" : "🔇 Mute";
-      // toggle audio track mute
-    };
+<p id="timer">00:00</p>
 
-    document.getElementById("videoBtn").onclick = () => {
-      // toggle video track
-    };
+<div class="videos">
+  <video id="remoteVideo" autoplay playsinline></video>
+  <video id="localVideo" autoplay muted playsinline style="width:120px; position:absolute; bottom:100px; right:10px; border:2px solid #ff4081;"></video>
+</div>
 
-    document.getElementById("endBtn").onclick = () => {
-      clearInterval(timerInt);
-      window.location.href = "message.html";
-    };
-  </script>
+<div class="controls">
+  <button id="muteBtn">🔇</button>
+  <button id="videoBtn">🎥</button>
+  <button id="endBtn">❌</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+import { getFirestore, doc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDLSjPvdhLP4Esh9i0k4Fbe5W3YUlHas94",
+  authDomain: "meet-your-love-3c2e9.firebaseapp.com",
+  projectId: "meet-your-love-3c2e9",
+  storageBucket: "meet-your-love-3c2e9.appspot.com",
+  messagingSenderId: "762275409257",
+  appId: "1:762275409257:web:374c366cfea5b01dae21f8"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let localVideo = document.getElementById("localVideo");
+let remoteVideo = document.getElementById("remoteVideo");
+let muteBtn = document.getElementById("muteBtn");
+let videoBtn = document.getElementById("videoBtn");
+let endBtn = document.getElementById("endBtn");
+let callStatus = document.getElementById("callStatus");
+let friendName = document.getElementById("friendName");
+
+let pc = null;
+let localStream = null;
+let remoteStream = null;
+let muted = false;
+let videoOn = true;
+
+// Timer
+let seconds = 0;
+let timerInt = setInterval(() => {
+  seconds++;
+  const m = String(Math.floor(seconds / 60)).padStart(2,"0");
+  const s = String(seconds % 60).padStart(2,"0");
+  document.getElementById("timer").innerText = `${m}:${s}`;
+}, 1000);
+
+// Call info from localStorage
+const callId = localStorage.getItem("pendingCallId");
+const currentUserId = localStorage.getItem("currentUserId");
+const callFriendId = localStorage.getItem("callFriendId");
+
+// Get call doc
+const callDocRef = doc(db, "calls", callId);
+
+// --- Setup Peer Connection ---
+async function initCall(){
+  pc = new RTCPeerConnection();
+
+  // Get audio/video
+  localStream = await navigator.mediaDevices.getUserMedia({video:true, audio:true});
+  localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+  localVideo.srcObject = localStream;
+
+  remoteStream = new MediaStream();
+  remoteVideo.srcObject = remoteStream;
+
+  pc.ontrack = e => e.streams[0].getTracks().forEach(t=>remoteStream.addTrack(t));
+
+  // Listen for remote call end
+  onSnapshot(callDocRef, (snap)=>{
+    const data = snap.data();
+    if(!data) return;
+    if(data.status==="ended"){
+      alert("Call ended");
+      endCall();
+    } else if(data.status==="accepted"){
+      callStatus.innerText="Connected";
+    }
+  });
+}
+
+initCall();
+
+// Mute/unmute
+muteBtn.onclick = () => {
+  muted = !muted;
+  localStream.getAudioTracks()[0].enabled = !muted;
+  muteBtn.innerText = muted ? "🔊" : "🔇";
+};
+
+// Toggle video
+videoBtn.onclick = () => {
+  videoOn = !videoOn;
+  localStream.getVideoTracks()[0].enabled = videoOn;
+  videoBtn.innerText = videoOn ? "🎥" : "📷";
+};
+
+// End call
+endBtn.onclick = async () => {
+  await updateDoc(callDocRef, {status:"ended"});
+  endCall();
+};
+
+function endCall(){
+  clearInterval(timerInt);
+  if(localStream) localStream.getTracks().forEach(t=>t.stop());
+  if(remoteStream) remoteStream.getTracks().forEach(t=>t.stop());
+  if(pc) pc.close();
+  window.location.href="message.html";
+}
+</script>
+
 </body>
 </html>
