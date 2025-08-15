@@ -3,95 +3,35 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Call</title>
+<title>Call - Meet Your Love</title>
 <style>
-  body {
-    background:#121212;
-    font-family:'Segoe UI', sans-serif;
-    color:white;
-    margin:0;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:flex-start;
-    height:100vh;
-  }
-  header {
-    width:100%;
-    padding:12px 16px;
-    background:#1f1f1f;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    box-shadow:0 2px 6px rgba(0,0,0,0.5);
-  }
-  header h2 { margin:0; font-size:18px; }
-  #timer { margin:10px 0; font-weight:600; }
-
-  .videos {
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:10px;
-    flex:1;
-    overflow:auto;
-    width:100%;
-    max-width:480px;
-  }
-
-  video {
-    width:90%;
-    max-width:380px;
-    border-radius:14px;
-    background:black;
-    object-fit:cover;
-  }
-
-  .controls {
-    display:flex;
-    gap:12px;
-    margin:10px 0 20px;
-  }
-  button {
-    padding:10px 16px;
-    border:none;
-    border-radius:50%;
-    cursor:pointer;
-    font-size:18px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    box-shadow:0 2px 6px rgba(0,0,0,0.4);
-    transition:all 0.2s ease;
-  }
-  button:hover { transform:scale(1.1); }
-  #endBtn { background:red; color:white; }
-  #muteBtn, #videoBtn { background:#2a2a2a; color:white; }
+  body { background:#121212; color:white; font-family:'Segoe UI',sans-serif; display:flex; flex-direction:column; align-items:center; padding:10px; }
+  h2 { margin:10px 0; }
+  #videos { display:flex; flex-wrap:wrap; justify-content:center; gap:10px; margin:10px 0; }
+  video { border-radius:15px; background:black; width:160px; height:220px; object-fit:cover; }
+  #controls { display:flex; gap:12px; margin-top:10px; }
+  button { padding:10px 16px; border:none; border-radius:50px; cursor:pointer; font-size:16px; color:white; background:#2a2a2a; transition:0.2s; }
+  button:hover { background:#3a3a3a; }
+  #endBtn { background:#ef4444 !important; }
+  #timer { margin-top:5px; font-weight:500; }
 </style>
 </head>
 <body>
-
-<header>
-  <h2>Call with <span id="friendName">Friend</span></h2>
-  <span id="callStatus">Connecting...</span>
-</header>
-
+<h2>Call in progress...</h2>
 <p id="timer">00:00</p>
-
-<div class="videos">
+<div id="videos">
+  <video id="localVideo" autoplay muted playsinline></video>
   <video id="remoteVideo" autoplay playsinline></video>
-  <video id="localVideo" autoplay muted playsinline style="width:120px; position:absolute; bottom:100px; right:10px; border:2px solid #ff4081;"></video>
 </div>
-
-<div class="controls">
-  <button id="muteBtn">🔇</button>
-  <button id="videoBtn">🎥</button>
-  <button id="endBtn">❌</button>
+<div id="controls">
+  <button id="muteBtn">🔇 Mute</button>
+  <button id="videoBtn">🎥 Video</button>
+  <button id="endBtn">❌ End</button>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getFirestore, doc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import { getFirestore, collection, doc, addDoc, onSnapshot, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDLSjPvdhLP4Esh9i0k4Fbe5W3YUlHas94",
@@ -104,94 +44,117 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let localVideo = document.getElementById("localVideo");
-let remoteVideo = document.getElementById("remoteVideo");
-let muteBtn = document.getElementById("muteBtn");
-let videoBtn = document.getElementById("videoBtn");
-let endBtn = document.getElementById("endBtn");
-let callStatus = document.getElementById("callStatus");
-let friendName = document.getElementById("friendName");
+const localVideo = document.getElementById("localVideo");
+const remoteVideo = document.getElementById("remoteVideo");
+const muteBtn = document.getElementById("muteBtn");
+const videoBtn = document.getElementById("videoBtn");
+const endBtn = document.getElementById("endBtn");
+const timerEl = document.getElementById("timer");
 
-let pc = null;
-let localStream = null;
-let remoteStream = null;
-let muted = false;
-let videoOn = true;
-
-// Timer
+let localStream, remoteStream, pc;
+let callId = localStorage.getItem("pendingCallId");
 let seconds = 0;
-let timerInt = setInterval(() => {
-  seconds++;
-  const m = String(Math.floor(seconds / 60)).padStart(2,"0");
-  const s = String(seconds % 60).padStart(2,"0");
-  document.getElementById("timer").innerText = `${m}:${s}`;
-}, 1000);
+let timerInterval;
 
-// Call info from localStorage
-const callId = localStorage.getItem("pendingCallId");
-const currentUserId = localStorage.getItem("currentUserId");
-const callFriendId = localStorage.getItem("callFriendId");
+function startTimer(){
+  timerInterval = setInterval(()=>{
+    seconds++;
+    const m = String(Math.floor(seconds/60)).padStart(2,'0');
+    const s = String(seconds%60).padStart(2,'0');
+    timerEl.innerText = `${m}:${s}`;
+  },1000);
+}
 
-// Get call doc
-const callDocRef = doc(db, "calls", callId);
+async function getMedia(audio=true, video=false){
+  return await navigator.mediaDevices.getUserMedia({ audio, video });
+}
 
-// --- Setup Peer Connection ---
+// --- WebRTC Setup ---
 async function initCall(){
-  pc = new RTCPeerConnection();
-
-  // Get audio/video
-  localStream = await navigator.mediaDevices.getUserMedia({video:true, audio:true});
-  localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+  localStream = await getMedia(true,true);
   localVideo.srcObject = localStream;
-
   remoteStream = new MediaStream();
   remoteVideo.srcObject = remoteStream;
 
-  pc.ontrack = e => e.streams[0].getTracks().forEach(t=>remoteStream.addTrack(t));
+  pc = new RTCPeerConnection();
+  localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
-  // Listen for remote call end
-  onSnapshot(callDocRef, (snap)=>{
+  pc.ontrack = event => {
+    event.streams[0].getTracks().forEach(t=>remoteStream.addTrack(t));
+  };
+
+  // Firestore signaling
+  const callDoc = doc(db,"calls",callId);
+  const offerCandidates = collection(callDoc,"offerCandidates");
+  const answerCandidates = collection(callDoc,"answerCandidates");
+
+  // Collect ICE candidates
+  pc.onicecandidate = event=>{
+    if(event.candidate) addDoc(offerCandidates,event.candidate.toJSON());
+  };
+
+  // Listen for remote ICE candidates
+  onSnapshot(answerCandidates, snap=>{
+    snap.docChanges().forEach(change=>{
+      if(change.type==="added"){
+        pc.addIceCandidate(change.doc.data());
+      }
+    });
+  });
+
+  // Listen if call ends
+  onSnapshot(callDoc, snap=>{
     const data = snap.data();
     if(!data) return;
     if(data.status==="ended"){
-      alert("Call ended");
       endCall();
-    } else if(data.status==="accepted"){
-      callStatus.innerText="Connected";
+      alert("Call ended");
     }
   });
+
+  // Create Offer
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  await updateDoc(callDoc,{ offer: { type: offer.type, sdp: offer.sdp } });
+
+  // Listen for answer
+  onSnapshot(callDoc, snap=>{
+    const data = snap.data();
+    if(data?.answer && !pc.currentRemoteDescription){
+      const answerDesc = new RTCSessionDescription(data.answer);
+      pc.setRemoteDescription(answerDesc);
+    }
+  });
+
+  startTimer();
 }
 
-initCall();
-
-// Mute/unmute
-muteBtn.onclick = () => {
-  muted = !muted;
-  localStream.getAudioTracks()[0].enabled = !muted;
-  muteBtn.innerText = muted ? "🔊" : "🔇";
-};
-
-// Toggle video
-videoBtn.onclick = () => {
-  videoOn = !videoOn;
-  localStream.getVideoTracks()[0].enabled = videoOn;
-  videoBtn.innerText = videoOn ? "🎥" : "📷";
-};
-
-// End call
-endBtn.onclick = async () => {
-  await updateDoc(callDocRef, {status:"ended"});
-  endCall();
-};
-
-function endCall(){
-  clearInterval(timerInt);
-  if(localStream) localStream.getTracks().forEach(t=>t.stop());
-  if(remoteStream) remoteStream.getTracks().forEach(t=>t.stop());
-  if(pc) pc.close();
+async function endCall(){
+  clearInterval(timerInterval);
+  localStream?.getTracks().forEach(t=>t.stop());
+  remoteStream?.getTracks().forEach(t=>t.stop());
+  pc?.close();
+  // Update call status in Firestore
+  if(callId) await updateDoc(doc(db,"calls",callId),{status:"ended"});
+  localStorage.removeItem("pendingCallId");
   window.location.href="message.html";
 }
-</script>
 
+muteBtn.onclick = ()=>{
+  if(!localStream) return;
+  localStream.getAudioTracks().forEach(t=>t.enabled = !t.enabled);
+  muteBtn.innerText = localStream.getAudioTracks()[0].enabled ? "🔇 Mute" : "🔊 Unmute";
+};
+
+videoBtn.onclick = ()=>{
+  if(!localStream) return;
+  localStream.getVideoTracks().forEach(t=>t.enabled = !t.enabled);
+  videoBtn.innerText = localStream.getVideoTracks()[0].enabled ? "🎥 Video" : "📵 Audio Only";
+};
+
+endBtn.onclick = endCall;
+
+initCall();
+</script>
 </body>
 </html>

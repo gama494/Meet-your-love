@@ -228,7 +228,7 @@ callBtn.onclick = async () => {
 // Receiver: listen for any incoming ringing calls for me
 function listenIncomingCalls() {
   if(!currentUserId) return;
-  const qIncoming = query(CALLS, where("receiverId", "==", currentUserId), where("status","==","ringing"));
+  const qIncoming = query(CALLS, where("receiverId", "==", currentUserId), where("status","==","calling"));
   onSnapshot(qIncoming, (snap)=>{
     snap.docChanges().forEach(async (change)=>{
       if(change.type === "added"){
