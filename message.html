@@ -1,53 +1,74 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Meet Your Love - Messages</title>
 <style>
-body { font-family:'Segoe UI', sans-serif; margin:0; padding:0; background:#121212; color:white; }
-nav { background:#1f1f1f; color:white; padding:10px 20px; display:flex; justify-content:space-between; align-items:center; }
-nav img { height:50px; width:50px; border-radius:50%; cursor:pointer; }
-nav span { font-weight:bold; margin-left:10px; }
-.container { max-width:1200px; margin:auto; padding:20px; }
-.chat-window { background:#1e1e1e; border-radius:15px; padding:15px; max-height:400px; overflow-y:auto; margin-bottom:10px; }
-.chat-message { margin-bottom:10px; padding:10px; border-radius:15px; max-width:80%; display:flex; gap:8px; align-items:flex-start; }
-.chat-message.me { background:#ff4081; margin-left:auto; flex-direction:row-reverse; color:white; }
-.chat-message img.profile { width:30px; height:30px; border-radius:50%; }
-.chat-message img.zoomable, .chat-message video.zoomable { max-width:150px; cursor:pointer; border-radius:10px; }
-.chat-message audio { outline:none; width:150px; }
-.pdf-link { display:block; background:#333; padding:5px; border-radius:10px; text-decoration:none; color:white; max-width:150px; }
-input, button { padding:10px; border-radius:10px; border:1px solid #333; margin-top:5px; background:#1e1e1e; color:white; }
-button { background:#ff4081; color:white; border:none; cursor:pointer; }
-button:hover { background:#e91e63; }
-#chatInput { width:calc(100% - 100px); }
-.attachments { display:flex; gap:5px; margin-bottom:5px; align-items:center; }
-.attachments input { display:none; }
-.modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); justify-content:center; align-items:center; z-index:9999; }
-.modal-content { background:#1f1f1f; padding:15px; border-radius:15px; max-width:90%; max-height:90%; overflow:auto; color:white; text-align:center; }
-.modal img, .modal video { max-width:100%; border-radius:10px; }
-.modal button { margin-top:10px; }
+  body { font-family:'Segoe UI', sans-serif; margin:0; padding:0; background:#121212; color:white; }
+  nav { background:#1f1f1f; color:white; padding:10px 16px; display:flex; justify-content:space-between; align-items:center; }
+  nav .left { display:flex; align-items:center; gap:10px; }
+  nav img { height:44px; width:44px; border-radius:50%; cursor:pointer; object-fit:cover; }
+  nav .username { font-weight:600; }
+  nav .actions { display:flex; gap:10px; align-items:center; }
+  .icon-btn { background:#2a2a2a; border:none; border-radius:999px; width:42px; height:42px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+  .icon-btn:hover { background:#3a3a3a; }
+  .container { max-width:1100px; margin:auto; padding:16px; }
+  .chat-window { background:#1e1e1e; border-radius:16px; padding:14px; max-height:420px; overflow-y:auto; margin-bottom:10px; }
+  .chat-message { margin-bottom:10px; padding:10px; border-radius:14px; max-width:80%; display:flex; gap:8px; align-items:flex-start; background:#262626; }
+  .chat-message.me { background:#ff4081; margin-left:auto; color:white; flex-direction:row-reverse; }
+  .chat-message img.profile { width:30px; height:30px; border-radius:50%; object-fit:cover; }
+  .chat-message img.zoomable, .chat-message video.zoomable { max-width:150px; cursor:pointer; border-radius:10px; }
+  .chat-message audio { outline:none; width:180px; }
+  .pdf-link { display:inline-block; background:#333; padding:6px 10px; border-radius:10px; text-decoration:none; color:white; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  input, button { padding:10px; border-radius:10px; border:1px solid #333; margin-top:5px; background:#1e1e1e; color:white; }
+  button { background:#ff4081; border:none; cursor:pointer; }
+  button:hover { background:#e91e63; }
+  #chatInput { width:calc(100% - 100px); }
+  .attachments { display:flex; gap:8px; margin-bottom:6px; align-items:center; }
+  .attachments input { display:none; }
+
+  /* Modal (Media viewer) */
+  .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.85); justify-content:center; align-items:center; z-index:90; }
+  .modal-content { background:#1f1f1f; padding:15px; border-radius:15px; max-width:90%; max-height:90%; overflow:auto; color:white; text-align:center; }
+  .modal img, .modal video { max-width:100%; border-radius:10px; }
+
+  /* Incoming Call Popup */
+  .call-popup { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:100; align-items:center; justify-content:center; }
+  .call-card { width:92%; max-width:420px; background:#1b1b1b; border:1px solid #2a2a2a; border-radius:18px; padding:18px; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.5); }
+  .call-avatar { width:86px; height:86px; border-radius:50%; object-fit:cover; border:3px solid #2c2c2c; margin:10px auto; display:block; }
+  .call-name { font-size:18px; font-weight:600; margin-top:6px; }
+  .call-status { color:#bdbdbd; font-size:14px; margin:6px 0 14px; }
+  .row { display:flex; gap:10px; justify-content:center; }
+  .btn-decline { background:#ef4444; }
+  .btn-accept  { background:#22c55e; }
+  .toast { position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:#262626; color:#fff; padding:10px 14px; border-radius:10px; border:1px solid #444; z-index:120; display:none; }
+
+  /* Small helper badge at top when caller is waiting */
+  .calling-banner { display:none; background:#0b5; color:#fff; padding:6px 10px; border-radius:12px; font-size:12px; }
 </style>
 </head>
 <body>
 
 <nav>
-  <div class="flex">
+  <div class="left">
     <img src="https://i.ibb.co/default-profile.png" id="navProfilePic" alt="Profile">
-    <span id="navUsername">Username</span>
+    <span class="username" id="navUsername">Username</span>
+    <span id="callingBanner" class="calling-banner">Calling…</span>
   </div>
-  <div>
-    <button onclick="goToMain()">Home</button>
-  </div>
-    <!-- 4K Call Icon Button -->
-    <button id="callBtn" style="background:none; border:none; cursor:pointer;">
-      <img src="https://cdn-icons-png.flaticon.com/512/483/483947.png" 
-           alt="Call" 
-           style="width:40px; height:40px;">
+  <div class="actions">
+    <!-- Phone icon button -->
+    <button id="callBtn" class="icon-btn" title="Call this person" aria-label="Call">
+      <!-- Simple phone icon (SVG) -->
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.08 4.18 2 2 0 0 1 4.06 2h3a2 2 0 0 1 2 1.72c.13.98.37 1.93.72 2.83a2 2 0 0 1-.45 2.11l-1.27 1.27a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.35 1.85.59 2.83.72A2 2 0 0 1 22 16.92z" fill="currentColor"/>
+      </svg>
     </button>
   </div>
 </nav>
+
 <audio id="msgSound" src="notification.mp3" preload="auto"></audio>
+<audio id="ringtone" src="ringtone.mp3" preload="auto" loop></audio>
 
 <div class="container">
   <h3 id="chatFriendName">Chat</h3>
@@ -65,16 +86,35 @@ button:hover { background:#e91e63; }
   <button id="sendMsgBtn">Send</button>
 </div>
 
-<!-- Media Modal -->
+<!-- Media viewer -->
 <div class="modal" id="mediaModal">
   <div class="modal-content" id="mediaContent"></div>
   <button onclick="closeMediaModal()">Close</button>
 </div>
 
+<!-- Incoming Call Popup -->
+<div id="incomingPopup" class="call-popup" role="dialog" aria-modal="true">
+  <div class="call-card">
+    <img id="incomingAvatar" class="call-avatar" src="https://i.ibb.co/default-profile.png" alt="">
+    <div id="incomingName" class="call-name">Incoming call</div>
+    <div class="call-status">Ringing…</div>
+    <div class="row">
+      <button id="declineBtn" class="btn-decline">Decline</button>
+      <button id="acceptBtn" class="btn-accept">Answer</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
 <script type="module">
+/* ---------------- Firebase ---------------- */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getFirestore, collection, doc, getDoc, addDoc, query, orderBy, onSnapshot, serverTimestamp, where } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+import {
+  getFirestore, collection, doc, getDoc, addDoc, setDoc, updateDoc,
+  query, orderBy, onSnapshot, serverTimestamp, where
+} from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDLSjPvdhLP4Esh9i0k4Fbe5W3YUlHas94",
@@ -84,11 +124,11 @@ const firebaseConfig = {
   messagingSenderId: "762275409257",
   appId: "1:762275409257:web:374c366cfea5b01dae21f8"
 };
-
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+/* ---------------- State ---------------- */
 let currentUserId = "";
 let currentChatFriend = "";
 let currentChatFriendName = "";
@@ -100,30 +140,151 @@ let audioChunks = [];
 let seconds = 0;
 let timerInterval = null;
 
+const ringtone = document.getElementById("ringtone");
+const callingBanner = document.getElementById("callingBanner");
+const incomingPopup = document.getElementById("incomingPopup");
+const incomingName = document.getElementById("incomingName");
+const incomingAvatar = document.getElementById("incomingAvatar");
+const acceptBtn = document.getElementById("acceptBtn");
+const declineBtn = document.getElementById("declineBtn");
+const toastEl = document.getElementById("toast");
 
+/* ---------------- Helpers ---------------- */
+function showToast(msg) {
+  toastEl.textContent = msg;
+  toastEl.style.display = "block";
+  setTimeout(()=> toastEl.style.display = "none", 2200);
+}
+function openMediaModal(url,type){
+  const modal = document.getElementById("mediaModal");
+  const content = document.getElementById("mediaContent");
+  if(type==="image") content.innerHTML=`<img src="${url}" />`;
+  else if(type==="video") content.innerHTML=`<video src="${url}" controls autoplay></video>`;
+  else if(type==="voice") content.innerHTML=`<audio src="${url}" controls autoplay></audio>`;
+  else content.innerHTML=`<a href="${url}" target="_blank">Open File</a>`;
+  modal.style.display="flex";
+}
+window.closeMediaModal = function(){ document.getElementById("mediaModal").style.display="none"; };
+function goToMain(){ window.location.href="main.html"; }
+
+/* ---------------- Call Signaling ---------------- */
+/**
+ * Schema (calls collection):
+ * - callId (doc id)
+ * - callerId, callerName, callerPic
+ * - receiverId, receiverName, receiverPic
+ * - callType: "audio" | "video"
+ * - status: "ringing" | "accepted" | "declined" | "ended"
+ * - createdAt
+ */
+const CALLS = collection(db, "calls");
+
+// Caller: start a call to currentChatFriend
 const callBtn = document.getElementById("callBtn");
+callBtn.onclick = async () => {
+  if(!currentChatFriend) { showToast("Open a chat first."); return; }
+  if(!currentUserId) { showToast("Not signed in."); return; }
 
-callBtn.onclick = () => {
-  // Set friend ID and call type
-  localStorage.setItem("callFriendId", "FRIEND_USER_ID"); // replace with real friend ID
-  localStorage.setItem("callType", "video"); // or 'audio'
+  // Create a new call doc with random id (safer for concurrent calls)
+  const callDocRef = await addDoc(CALLS, {
+    callerId: currentUserId,
+    callerName: document.getElementById("navUsername").textContent || "Me",
+    callerPic: document.getElementById("navProfilePic").src || "",
+    receiverId: currentChatFriend,
+    receiverName: currentChatFriendName || "",
+    receiverPic: currentChatFriendPic || "",
+    callType: "video",                    // or "audio" if you add a toggle
+    status: "ringing",
+    createdAt: serverTimestamp()
+  });
 
-  // Redirect to call.html
-  window.location.href = "call.html";
+  const callId = callDocRef.id;
+  localStorage.setItem("pendingCallId", callId);
+  localStorage.setItem("callFriendId", currentChatFriend);       // used by call.html
+  localStorage.setItem("callType", "video");
+
+  callingBanner.style.display = "inline-flex";
+  showToast("Calling…");
+
+  // Listen for status changes for this call
+  onSnapshot(doc(db, "calls", callId), (snap)=>{
+    const data = snap.data();
+    if(!data) return;
+    if(data.status === "accepted"){
+      callingBanner.style.display = "none";
+      // Go to call.html for both
+      window.location.href = "call.html";
+    } else if(data.status === "declined") {
+      callingBanner.style.display = "none";
+      showToast("Call declined");
+      // Optionally clean up
+    } else if(data.status === "ended") {
+      callingBanner.style.display = "none";
+      showToast("Call ended");
+    }
+  });
+};
+
+// Receiver: listen for any incoming ringing calls for me
+function listenIncomingCalls() {
+  if(!currentUserId) return;
+  const qIncoming = query(CALLS, where("receiverId", "==", currentUserId), where("status","==","ringing"));
+  onSnapshot(qIncoming, (snap)=>{
+    snap.docChanges().forEach(async (change)=>{
+      if(change.type === "added"){
+        const callId = change.doc.id;
+        const call = change.doc.data();
+
+        // Show popup & play ringtone
+        incomingName.textContent = call.callerName || "Incoming call";
+        incomingAvatar.src = call.callerPic || "https://i.ibb.co/default-profile.png";
+        incomingPopup.style.display = "flex";
+        try { await ringtone.play(); } catch(_) {}
+
+        // Bind buttons (unbind first to avoid stacking)
+        acceptBtn.onclick = async ()=>{
+          try {
+            await updateDoc(doc(db,"calls",callId), { status: "accepted" });
+            incomingPopup.style.display = "none";
+            ringtone.pause(); ringtone.currentTime = 0;
+
+            // Set localStorage so call.html knows the friend & type
+            localStorage.setItem("callFriendId", call.callerId);
+            localStorage.setItem("callType", call.callType || "video");
+            localStorage.setItem("pendingCallId", callId);
+
+            window.location.href = "call.html";
+          } catch(e){ console.error(e); showToast("Error accepting call"); }
+        };
+
+        declineBtn.onclick = async ()=>{
+          try {
+            await updateDoc(doc(db,"calls",callId), { status: "declined" });
+            incomingPopup.style.display = "none";
+            ringtone.pause(); ringtone.currentTime = 0;
+          } catch(e){ console.error(e); showToast("Error declining call"); }
+        };
+      }
+    });
+  });
 }
 
-// Load user info
+// Caller also listens if callee declines on a different session (handled above in callBtn snapshot)
+
+/* ---------------- Auth & Chat ---------------- */
 onAuthStateChanged(auth, async user => {
   if(user){
     currentUserId = user.uid;
-    const userRef = doc(db, "users", user.uid);
-    const userSnap = await getDoc(userRef);
-    if(userSnap.exists()){
-      const data = userSnap.data();
-      document.getElementById("navProfilePic").src = data.profilePic || "https://i.ibb.co/default-profile.png";
-      document.getElementById("navUsername").innerText = data.username || "Username";
+
+    // Load my profile for nav
+    const meSnap = await getDoc(doc(db, "users", user.uid));
+    if(meSnap.exists()){
+      const me = meSnap.data();
+      document.getElementById("navProfilePic").src = me.profilePic || "https://i.ibb.co/default-profile.png";
+      document.getElementById("navUsername").innerText = me.username || "Username";
     }
 
+    // Load current chat friend from localStorage (you already set these elsewhere)
     currentChatFriend = localStorage.getItem("chatFriendId") || "";
     currentChatFriendName = localStorage.getItem("chatFriendName") || "";
     currentChatFriendPic = localStorage.getItem("chatFriendPic") || "";
@@ -132,19 +293,18 @@ onAuthStateChanged(auth, async user => {
       document.getElementById("chatFriendName").innerText = currentChatFriendName || "Chat";
       startChat(currentChatFriend, currentChatFriendName, currentChatFriendPic);
     }
-    
-    // Start global message listener for sound
+
+    // Sounds for normal messages
     listenGlobalMessages();
-    
-  } else window.location.href="index.html";
+    // Start incoming call listener
+    listenIncomingCalls();
+
+  } else {
+    window.location.href="index.html";
+  }
 });
 
-function goToMain(){ window.location.href="main.html"; }
-
-
-
-
-// Upload to Cloudinary
+/* ---------- Chat: your original messaging code ---------- */
 async function uploadToCloudinary(file){
   if(!confirm(`Send ${file.name}?`)) return null;
   const fd = new FormData();
@@ -155,7 +315,6 @@ async function uploadToCloudinary(file){
   return j.secure_url;
 }
 
-// Start chat
 function startChat(friendId, friendName, friendPic){
   currentChatFriend = friendId;
   currentChatFriendName = friendName;
@@ -172,10 +331,12 @@ function startChat(friendId, friendName, friendPic){
     chatWindow.innerHTML="";
     snap.forEach(docu=>{
       const msg = docu.data();
-      if((msg.from===currentUserId && msg.to===currentChatFriend) || (msg.to===currentUserId && msg.from===currentChatFriend)){
+      const mine = (msg.from===currentUserId && msg.to===currentChatFriend);
+      const theirs = (msg.to===currentUserId && msg.from===currentChatFriend);
+      if(mine || theirs){
         const div = document.createElement("div");
-        div.className = "chat-message" + (msg.from===currentUserId?" me":"");
-        const profilePic = msg.from===currentUserId ? document.getElementById("navProfilePic").src : currentChatFriendPic;
+        div.className = "chat-message" + (mine?" me":"");
+        const profilePic = mine ? document.getElementById("navProfilePic").src : currentChatFriendPic;
 
         let content = "";
         if(msg.type==="text") content = msg.text;
@@ -185,12 +346,12 @@ function startChat(friendId, friendName, friendPic){
         else if(msg.type==="pdf" || msg.type==="doc") content = `<a href="${msg.fileUrl}" class="pdf-link" target="_blank">📄 ${msg.fileUrl.split("/").pop()}</a>`;
 
         div.innerHTML = `
-          ${msg.from!==currentUserId?`<img src="${profilePic}" class="profile">`:""}
+          ${!mine?`<img src="${profilePic}" class="profile">`:""}
           <div style="display:flex; flex-direction:column;">
-            <strong>${msg.from===currentUserId?"Me":currentChatFriendName}:</strong>
+            <strong>${mine?"Me":currentChatFriendName}:</strong>
             ${content}
           </div>
-          ${msg.from===currentUserId?`<img src="${profilePic}" class="profile">`:""}
+          ${mine?`<img src="${profilePic}" class="profile">`:""}
         `;
         chatWindow.appendChild(div);
 
@@ -203,7 +364,6 @@ function startChat(friendId, friendName, friendPic){
   });
 }
 
-// Send text
 document.getElementById("sendMsgBtn").onclick = async ()=>{
   const text = document.getElementById("chatInput").value.trim();
   if(!text || !currentChatFriend) return alert("Select a friend to chat");
@@ -216,9 +376,8 @@ document.getElementById("sendMsgBtn").onclick = async ()=>{
     read:false
   });
   document.getElementById("chatInput").value="";
-}
+};
 
-// File attachment
 document.getElementById("attachFile").onchange = async (e)=>{
   const file = e.target.files[0];
   if(!file || !currentChatFriend) return;
@@ -238,13 +397,8 @@ document.getElementById("attachFile").onchange = async (e)=>{
     read:false
   });
   e.target.value="";
-}
+};
 
-window.closeMediaModal = function() {
-  document.getElementById("mediaModal").style.display = "none";
-}
-
-// Listen for all incoming messages to me
 function listenGlobalMessages() {
   const q = query(collection(db, "messages"), where("to", "==", currentUserId));
   onSnapshot(q, snap => {
@@ -256,19 +410,7 @@ function listenGlobalMessages() {
   });
 }
 
-// Media Modal
-function openMediaModal(url,type){
-  const modal = document.getElementById("mediaModal");
-  const content = document.getElementById("mediaContent");
-  if(type==="image") content.innerHTML=`<img src="${url}">`;
-  else if(type==="video") content.innerHTML=`<video src="${url}" controls autoplay></video>`;
-  else if(type==="voice") content.innerHTML=`<audio src="${url}" controls autoplay></audio>`;
-  else content.innerHTML=`<a href="${url}" target="_blank">Open File</a>`;
-  modal.style.display="flex";
-}
-function closeMediaModal(){ document.getElementById("mediaModal").style.display="none"; }
-
-// Voice recorder
+// Voice recorder (unchanged)
 const recordBtn = document.getElementById("recordBtn");
 const voiceTimer = document.getElementById("voiceTimer");
 recordBtn.onclick = async ()=>{
@@ -298,7 +440,7 @@ recordBtn.onclick = async ()=>{
       timestamp: serverTimestamp(),
       read:false
     });
-  }
+  };
 
   mediaRecorder.start();
   timerInterval = setInterval(()=>{
@@ -307,88 +449,8 @@ recordBtn.onclick = async ()=>{
     const s = String(seconds%60).padStart(2,'0');
     voiceTimer.innerText=`${m}:${s}`;
   },1000);
-}
-
-
-// --- Call Notification ---
-const notificationContainer = document.createElement("div");
-notificationContainer.id = "callNotification";
-notificationContainer.style.position = "fixed";
-notificationContainer.style.bottom = "20px";
-notificationContainer.style.right = "20px";
-notificationContainer.style.background = "#00ffea";
-notificationContainer.style.color = "#121212";
-notificationContainer.style.padding = "15px";
-notificationContainer.style.borderRadius = "10px";
-notificationContainer.style.boxShadow = "0 0 15px rgba(0,255,234,0.5)";
-notificationContainer.style.display = "none";
-notificationContainer.style.flexDirection = "column";
-notificationContainer.style.gap = "10px";
-notificationContainer.style.zIndex = "999";
-document.body.appendChild(notificationContainer);
-
-const messageText = document.createElement("span");
-messageText.innerText = "Incoming Call";
-notificationContainer.appendChild(messageText);
-
-const btnContainer = document.createElement("div");
-btnContainer.style.display = "flex";
-btnContainer.style.gap = "10px";
-notificationContainer.appendChild(btnContainer);
-
-const acceptBtn = document.createElement("button");
-acceptBtn.innerText = "Accept";
-acceptBtn.style.background = "#00cbbd";
-acceptBtn.style.color = "#121212";
-acceptBtn.style.border = "none";
-acceptBtn.style.padding = "8px 15px";
-acceptBtn.style.borderRadius = "8px";
-acceptBtn.style.cursor = "pointer";
-btnContainer.appendChild(acceptBtn);
-
-const declineBtn = document.createElement("button");
-declineBtn.innerText = "Decline";
-declineBtn.style.background = "#ff4d4d";
-declineBtn.style.color = "#121212";
-declineBtn.style.border = "none";
-declineBtn.style.padding = "8px 15px";
-declineBtn.style.borderRadius = "8px";
-declineBtn.style.cursor = "pointer";
-btnContainer.appendChild(declineBtn);
-
-function listenIncomingCalls(){
-  const callRef = doc(db, "calls", currentUserId);
-  onSnapshot(callRef, async (docSnap)=>{
-    const data = docSnap.data();
-    if(!data) return;
-    if(data.callerId && !data.answered && !data.ended){
-      notificationContainer.style.display = "flex";
-      messageText.innerText = `Incoming call from ${data.callerName || "Friend"}`;
-    } else {
-      notificationContainer.style.display = "none";
-    }
-  });
-}
-
-acceptBtn.onclick = async ()=>{
-  const callRef = doc(db, "calls", currentUserId);
-  const callData = (await getDoc(callRef)).data();
-  if(!callData) return;
-  await updateDoc(callRef, { answered:true });
-  localStorage.setItem("callFriendId", callData.callerId);
-  localStorage.setItem("callType", callData.callType || "video");
-  window.location.href="call.html";
 };
 
-declineBtn.onclick = async ()=>{
-  const callRef = doc(db, "calls", currentUserId);
-  await updateDoc(callRef, { ended:true });
-  notificationContainer.style.display = "none";
-};
-
-// --- Existing Chat and Media Code ---
-// Upload to Cloudinary, startChat, sendMsgBtn, attachFile, mediaModal, voice recorder
-// Keep your previous functions as-is here...
 
 </script>
 </body>
