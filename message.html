@@ -1,555 +1,313 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Meet Your Love – Messages & Calls</title>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meet Your Love - Messages</title>
 <style>
-  :root{
-    --bg:#0e0e10;
-    --card:#17171a;
-    --muted:#a0a0a8;
-    --brand:#ff4081;
-    --brand-2:#e91e63;
-    --ok:#2ecc71;
-    --danger:#ff4757;
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    margin:0;background:var(--bg);color:#fff;font-family:"Segoe UI",system-ui,Arial;
-    -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
-  }
-  /* Top bar */
-  nav{
-    position:sticky; top:0; z-index:20;
-    background:#121215; border-bottom:1px solid #202026;
-    display:flex; align-items:center; justify-content:space-between;
-    padding:10px 14px; gap:10px;
-  }
-  .left, .right{display:flex; align-items:center; gap:10px}
-  .avatar{width:44px;height:44px;border-radius:50%;object-fit:cover}
-  .title{font-weight:700;}
-  .chip{
-    display:flex; align-items:center; gap:10px; background:#1b1b20;
-    border:1px solid #25252c; padding:8px 12px; border-radius:14px;
-  }
-  .icon-btn{
-    width:44px;height:44px;border-radius:12px;border:1px solid #26262e;
-    background:#1a1a20;color:#fff; font-size:20px; display:grid; place-items:center;
-    cursor:pointer; outline:none;
-  }
-  .icon-btn.primary{ background:var(--brand); border-color:transparent;}
-  .icon-btn.danger{ background:var(--danger); border-color:transparent;}
-  .icon-btn:active{ transform:scale(.98) }
-
-  /* Layout */
-  .container{max-width:1100px;margin:0 auto;padding:14px}
-  .card{background:var(--card); border:1px solid #24242a; border-radius:16px; padding:14px;}
-  .chat-header{display:flex; align-items:center; justify-content:space-between; gap:10px}
-  .friend{display:flex; align-items:center; gap:10px}
-  .friend .name{font-weight:700}
-  .friend .sub{font-size:12px;color:var(--muted)}
-
-  .chat-window{
-    margin-top:12px; height:55vh; min-height:320px; overflow:auto;
-    background:#131318; border:1px solid #212129; border-radius:16px; padding:12px;
-    scroll-behavior:smooth;
-  }
-  .msg{display:flex; align-items:flex-end; gap:8px; margin:8px 0; max-width:88%;}
-  .msg.you{margin-left:auto; flex-direction:row-reverse;}
-  .bubble{
-    padding:10px 12px; border-radius:14px; background:#21212a; line-height:1.25; word-wrap:anywhere;
-  }
-  .you .bubble{ background:var(--brand); color:#fff}
-  .msg .tiny{width:28px;height:28px;border-radius:50%;object-fit:cover}
-  .bubble img, .bubble video{max-width:220px;border-radius:12px;display:block}
-  .bubble audio{width:220px}
-
-  /* Composer */
-  .composer{display:flex; gap:8px; margin-top:10px; align-items:center; flex-wrap:nowrap}
-  .input{
-    flex:1; display:flex; align-items:center; gap:8px; background:#15151b;
-    border:1px solid #24242b; border-radius:14px; padding:8px 10px;
-  }
-  .input input{flex:1;background:transparent;border:none;outline:none;color:#fff;font-size:16px}
-  .hidden-file{display:none}
-
-  /* Modals */
-  .modal{
-    position:fixed; inset:0; background:rgba(0,0,0,.6);
-    display:none; align-items:center; justify-content:center; z-index:99;
-    padding:16px;
-  }
-  .panel{
-    width:min(560px,100%); background:#17171b; border:1px solid #272730;
-    border-radius:18px; padding:16px;
-  }
-  .between{display:flex; align-items:center; justify-content:space-between; gap:10px}
-  .list{display:grid; gap:10px}
-  .btn{padding:10px 14px;border-radius:12px;border:1px solid #2a2a34;background:#1b1b22;color:#fff;cursor:pointer}
-  .btn.primary{background:var(--brand); border-color:transparent}
-  .btn.ghost{background:transparent}
-  .center{display:grid;place-items:center}
-
-  /* Call – full screen */
-  #callScreen{
-    position:fixed; inset:0; display:none; background:#000; z-index:100;
-  }
-  .video-wrap{position:absolute; inset:0; display:grid; place-items:center}
-  #remoteVideo{width:100%; height:100%; object-fit:cover; background:#000}
-  #localVideo{
-    position:absolute; bottom:96px; right:16px; width:120px; height:170px;
-    border-radius:16px; border:2px solid rgba(255,255,255,.8); object-fit:cover; background:#111;
-  }
-  #callControls{
-    position:absolute; left:0; right:0; bottom:18px; display:flex; justify-content:center; gap:14px;
-  }
-  .call-btn{
-    width:62px;height:62px;border-radius:50%;display:grid;place-items:center;
-    border:none;font-size:26px;color:#fff; box-shadow:0 8px 24px rgba(0,0,0,.45)
-  }
-  .call-btn.gray{ background:rgba(255,255,255,.22) }
-  .call-btn.end{ background:var(--danger) }
-  .call-btn.accept{ background:var(--ok) }
-  .call-btn.ring{ background:var(--brand) }
-
-  /* Incoming call sheet */
-  #incomingSheet{
-    position:fixed; left:50%; transform:translateX(-50%);
-    bottom:18px; width:min(560px,92%); background:#121216; border:1px solid #242430;
-    border-radius:18px; padding:12px; display:none; z-index:120;
-    backdrop-filter: blur(8px);
-  }
-  #incomingSheet .row{display:flex; align-items:center; justify-content:space-between; gap:10px}
-  .ringing{color:#ddd; font-size:14px}
-
-  /* Media modal for image/video zoom */
-  #mediaModal .panel{width:min(760px,100%);text-align:center}
-  .panel img, .panel video{max-width:100%; border-radius:12px}
-
-  /* Mobile polish */
-  @media (max-width:600px){
-    nav{padding:8px 10px}
-    .title{display:none}
-    .chat-window{height:62vh}
-    .bubble img, .bubble video, .bubble audio{max-width:70vw}
-    #localVideo{width:92px;height:132px;bottom:88px; right:12px}
-    #callControls{gap:10px}
-    .call-btn{width:58px;height:58px;font-size:24px}
-  }
+body { font-family:'Segoe UI', sans-serif; margin:0; padding:0; background:#121212; color:white; }
+nav { background:#1f1f1f; color:white; padding:10px 20px; display:flex; justify-content:space-between; align-items:center; }
+nav img { height:50px; width:50px; border-radius:50%; cursor:pointer; }
+nav span { font-weight:bold; margin-left:10px; }
+.container { max-width:1200px; margin:auto; padding:20px; }
+.chat-window { background:#1e1e1e; border-radius:15px; padding:15px; max-height:400px; overflow-y:auto; margin-bottom:10px; }
+.chat-message { margin-bottom:10px; padding:10px; border-radius:15px; max-width:80%; display:flex; gap:8px; align-items:flex-start; }
+.chat-message.me { background:#ff4081; margin-left:auto; flex-direction:row-reverse; color:white; }
+.chat-message img.profile { width:30px; height:30px; border-radius:50%; }
+.chat-message img.zoomable, .chat-message video.zoomable { max-width:150px; cursor:pointer; border-radius:10px; }
+.chat-message audio { outline:none; width:150px; }
+.pdf-link { display:block; background:#333; padding:5px; border-radius:10px; text-decoration:none; color:white; max-width:150px; }
+input, button { padding:10px; border-radius:10px; border:1px solid #333; margin-top:5px; background:#1e1e1e; color:white; }
+button { background:#ff4081; color:white; border:none; cursor:pointer; }
+button:hover { background:#e91e63; }
+#chatInput { width:calc(100% - 100px); }
+.attachments { display:flex; gap:5px; margin-bottom:5px; align-items:center; }
+.attachments input { display:none; }
+.modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); justify-content:center; align-items:center; z-index:9999; }
+.modal-content { background:#1f1f1f; padding:15px; border-radius:15px; max-width:90%; max-height:90%; overflow:auto; color:white; text-align:center; }
+.modal img, .modal video { max-width:100%; border-radius:10px; }
+.modal button { margin-top:10px; }
 </style>
 </head>
 <body>
 
-<!-- Ringtone (loop) -->
-<audio id="ringTone" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_e6a8e5b0a3.mp3?filename=phone-ringing-111043.mp3" preload="auto" loop></audio>
-
 <nav>
-  <div class="left">
-    <img id="navProfilePic" class="avatar" src="https://i.ibb.co/4pVBB1K/default-avatar.png" alt="">
-    <div class="title" id="navUsername">Username</div>
+  <div class="flex">
+    <img src="https://i.ibb.co/default-profile.png" id="navProfilePic" alt="Profile">
+    <span id="navUsername">Username</span>
   </div>
-
-  <div class="chip" id="friendChip">
-    <img id="friendPic" class="avatar" style="width:36px;height:36px" src="https://i.pravatar.cc/100" alt="">
-    <div>
-      <div class="name" id="chatFriendName">Chat</div>
-      <div class="sub" id="friendPresence">online</div>
-    </div>
+  <div>
+    <button onclick="goToMain()">Home</button>
   </div>
-
-  <div class="right">
-    <!-- Start Audio Call -->
-    <button id="callBtn" class="icon-btn primary" title="Audio Call">📞</button>
-    <!-- Start Video Call -->
-    <button id="videoBtn" class="icon-btn" title="Video Call">🎥</button>
-    <button class="icon-btn" onclick="location.href='main.html'" title="Home">🏠</button>
+  <div id="callButtons" style="margin-bottom:10px;">
+    <button id="phoneCallBtn" title="Audio Call">📞</button>
+    <button id="videoCallBtn" title="Video Call">🎥</button>
   </div>
+  
 </nav>
+<audio id="msgSound" src="notification.mp3" preload="auto"></audio>
 
 <div class="container">
-  <div class="card">
-    <div class="chat-header">
-      <div class="friend">
-        <img id="friendPic2" class="avatar" style="width:40px;height:40px" src="https://i.pravatar.cc/100" alt="">
-        <div>
-          <div class="name" id="chatFriendName2">Chat</div>
-          <div class="sub" id="chatSub">Say hi 👋</div>
-        </div>
-      </div>
-    </div>
+  <h3 id="chatFriendName">Chat</h3>
+  <div class="chat-window" id="chatWindow"></div>
 
-    <div id="chatWindow" class="chat-window"></div>
-
-    <!-- Composer -->
-    <div class="composer">
-      <label class="icon-btn" title="Attach">
-        📎
-        <input id="attachFile" class="hidden-file" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx" />
-      </label>
-      <div class="input">
-        <input id="chatInput" placeholder="Type a message…" />
-        <button id="recordBtn" class="icon-btn" title="Voice">🎤</button>
-      </div>
-      <button id="sendMsgBtn" class="icon-btn primary" title="Send">➤</button>
-      <span id="voiceTimer" style="min-width:54px;text-align:center;color:var(--muted)">00:00</span>
-    </div>
+  <div class="attachments">
+    <label>📎
+      <input type="file" id="attachFile" accept="image/*,video/*,audio/*,.pdf,.doc,.docx">
+    </label>
+    <button id="recordBtn">🎤 Record</button>
+    <span id="voiceTimer">00:00</span>
   </div>
+
+  <input type="text" id="chatInput" placeholder="Type a message...">
+  <button id="sendMsgBtn">Send</button>
 </div>
 
-<!-- Media modal -->
-<div id="mediaModal" class="modal">
-  <div class="panel">
-    <div class="between" style="margin-bottom:8px">
-      <div style="font-weight:700">Preview</div>
-      <button class="btn ghost" onclick="closeMediaModal()">Close</button>
-    </div>
-    <div id="mediaContent" class="center"></div>
-  </div>
+<!-- Media Modal -->
+<div class="modal" id="mediaModal">
+  <div class="modal-content" id="mediaContent"></div>
+  <button onclick="closeMediaModal()">Close</button>
 </div>
-
-<!-- Incoming call sheet -->
-<div id="incomingSheet">
-  <div class="row">
-    <div style="display:flex;gap:10px;align-items:center">
-      <img id="incomingAvatar" class="avatar" style="width:48px;height:48px" src="https://i.pravatar.cc/100" alt="">
-      <div>
-        <div style="font-weight:700" id="incomingFrom">Incoming call</div>
-        <div class="ringing" id="incomingType">Ringing…</div>
-      </div>
-    </div>
-    <div style="display:flex;gap:10px">
-      <button id="declineBtn" class="call-btn end" title="Decline">✖</button>
-      <button id="acceptBtn" class="call-btn accept" title="Accept">✔</button>
-    </div>
-  </div>
-</div>
-
-<!-- Fullscreen call screen -->
-<div id="callScreen">
-  <div class="video-wrap">
-    <video id="remoteVideo" autoplay playsinline></video>
-    <video id="localVideo" autoplay muted playsinline></video>
-  </div>
-  <div id="callControls">
-    <button id="toggleMic" class="call-btn gray" title="Mute/Unmute">🎙️</button>
-    <button id="toggleCam" class="call-btn gray" title="Camera On/Off">📷</button>
-    <button id="switchToVideo" class="call-btn ring" title="Switch to Video">🎥</button>
-    <button id="hangupBtn" class="call-btn end" title="End">⏹</button>
-  </div>
-</div>
-
-<!-- Notification ding for chat messages -->
-<audio id="msgSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_7ad1c2f476.mp3?filename=soft-notification-112141.mp3" preload="auto"></audio>
 
 <script type="module">
-  /* ---------------- Firebase ---------------- */
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-  import {
-    getFirestore, collection, doc, getDoc, addDoc, setDoc, updateDoc,
-    query, orderBy, onSnapshot, serverTimestamp, where
-  } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-  
-  /* ==== CONFIG ==== */
-  const firebaseConfig = {
-    apiKey: "AIzaSyDLSjPvdhLP4Esh9i0k4Fbe5W3YUlHas94",
-    authDomain: "meet-your-love-3c2e9.firebaseapp.com",
-    projectId: "meet-your-love-3c2e9",
-    storageBucket: "meet-your-love-3c2e9.appspot.com",
-    messagingSenderId: "762275409257",
-    appId: "1:762275409257:web:374c366cfea5b01dae21f8"
-  };
-  
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
-  
-  /* ---------------- Cloudinary ---------------- */
-  const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dcmudqqsp/upload";
-  const CLOUDINARY_PRESET = "voice upload";
-  
-  /* ---------------- State ---------------- */
-  let currentUserId = "";
-  let currentUser = null;
-  
-  let peerId   = localStorage.getItem("chatFriendId")   || "";
-  let peerName = localStorage.getItem("chatFriendName") || "Chat";
-  let peerPic  = localStorage.getItem("chatFriendPic")  || "https://i.pravatar.cc/100";
-  
-  let pc = null;
-  let localStream = null;
-  let remoteStream = null;
-  let currentCallId = null;
-  let currentCallType = "audio";
-  
-  /* ---------------- Helpers ---------------- */
-  const $ = sel => document.querySelector(sel);
-  const chatWindow = $("#chatWindow");
-  
-  function setFriendHeader(){
-    $("#chatFriendName").textContent = peerName;
-    $("#friendPic").src = peerPic;
-  }
-  setFriendHeader();
-  
-  function scrollToBottom(){
-    chatWindow.scrollTop = chatWindow.scrollHeight;
-  }
-  
-  async function uploadToCloudinary(file){
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("upload_preset", CLOUDINARY_PRESET);
-    const r = await fetch(CLOUDINARY_URL, { method:"POST", body:fd });
-    const j = await r.json();
-    if(!j.secure_url) throw new Error(j.error?.message || "Upload failed");
-    return j.secure_url;
-  }
-  
-  /* ---------------- Auth ---------------- */
-  onAuthStateChanged(auth, async (user)=>{
-    if(!user){ location.href = "index.html"; return; }
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { getFirestore, collection, doc, getDoc, addDoc, query, orderBy, onSnapshot, serverTimestamp, where } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDLSjPvdhLP4Esh9i0k4Fbe5W3YUlHas94",
+  authDomain: "meet-your-love-3c2e9.firebaseapp.com",
+  projectId: "meet-your-love-3c2e9",
+  storageBucket: "meet-your-love-3c2e9.appspot.com",
+  messagingSenderId: "762275409257",
+  appId: "1:762275409257:web:374c366cfea5b01dae21f8"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUserId = "";
+let currentChatFriend = "";
+let currentChatFriendName = "";
+let currentChatFriendPic = "";
+let chatUnsub = null;
+
+let mediaRecorder = null;
+let audioChunks = [];
+let seconds = 0;
+let timerInterval = null;
+
+// Load user info
+onAuthStateChanged(auth, async user => {
+  if(user){
     currentUserId = user.uid;
-  
-    const uSnap = await getDoc(doc(db, "users", currentUserId));
-    currentUser = uSnap.exists() ? uSnap.data() : {};
-    $("#navProfilePic").src = currentUser.profilePic || "https://i.ibb.co/4pVBB1K/default-avatar.png";
-    $("#navUsername").textContent = currentUser.username || "Username";
-  
-    if(peerId) startChat();
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+    if(userSnap.exists()){
+      const data = userSnap.data();
+      document.getElementById("navProfilePic").src = data.profilePic || "https://i.ibb.co/default-profile.png";
+      document.getElementById("navUsername").innerText = data.username || "Username";
+    }
+
+    currentChatFriend = localStorage.getItem("chatFriendId") || "";
+    currentChatFriendName = localStorage.getItem("chatFriendName") || "";
+    currentChatFriendPic = localStorage.getItem("chatFriendPic") || "";
+
+    if(currentChatFriend){
+      document.getElementById("chatFriendName").innerText = currentChatFriendName || "Chat";
+      startChat(currentChatFriend, currentChatFriendName, currentChatFriendPic);
+    }
+    
+    const phoneBtn = document.getElementById("phoneCallBtn");
+const videoBtn = document.getElementById("videoCallBtn");
+
+// Make sure a friend is selected
+function startCall(type){
+  if(!currentChatFriend) return alert("Select a friend to call");
+  localStorage.setItem("callFriendId", currentChatFriend);
+  localStorage.setItem("callFriendName", currentChatFriendName);
+  localStorage.setItem("callFriendPic", currentChatFriendPic);
+  localStorage.setItem("callType", type); // "audio" or "video"
+  window.location.href = "call.html";
+}
+
+phoneBtn.addEventListener("click", ()=> startCall("audio"));
+videoBtn.addEventListener("click", ()=> startCall("video"));
+
+
+    // Start global message listener for sound
     listenGlobalMessages();
-    listenIncomingCalls();
-  });
-  
-  /* ---------------- Chat ---------------- */
-  function startChat(){
-    setFriendHeader();
-    const qAll = query(collection(db,"messages"), orderBy("timestamp"));
-    onSnapshot(qAll, snap=>{
-      chatWindow.innerHTML = "";
-      snap.forEach(d=>{
-        const m = d.data();
-        const inThis = (m.from === currentUserId && m.to === peerId) ||
-                       (m.to === currentUserId && m.from === peerId);
-        if(!inThis) return;
-  
-        const row = document.createElement("div");
-        row.className = "msg" + (m.from===currentUserId ? " you":"");
-        const pic = m.from===currentUserId ? (currentUser.profilePic||"https://i.pravatar.cc/100") : peerPic;
-  
+    
+  } else window.location.href="index.html";
+});
+
+function goToMain(){ window.location.href="main.html"; }
+
+// Upload to Cloudinary
+async function uploadToCloudinary(file){
+  if(!confirm(`Send ${file.name}?`)) return null;
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("upload_preset", "voice upload"); // Replace with your preset
+  const r = await fetch("https://api.cloudinary.com/v1_1/dcmudqqsp/upload",{method:"POST",body:fd});
+  const j = await r.json();
+  return j.secure_url;
+}
+
+// Start chat
+function startChat(friendId, friendName, friendPic){
+  currentChatFriend = friendId;
+  currentChatFriendName = friendName;
+  currentChatFriendPic = friendPic;
+  document.getElementById("chatFriendName").innerText = friendName;
+  const chatWindow = document.getElementById("chatWindow");
+  chatWindow.innerHTML="";
+
+  if(chatUnsub) chatUnsub();
+
+  const chatCollection = collection(db,"messages");
+  const chatQuery = query(chatCollection, orderBy("timestamp"));
+  chatUnsub = onSnapshot(chatQuery, snap=>{
+    chatWindow.innerHTML="";
+    snap.forEach(docu=>{
+      const msg = docu.data();
+      if((msg.from===currentUserId && msg.to===currentChatFriend) || (msg.to===currentUserId && msg.from===currentChatFriend)){
+        const div = document.createElement("div");
+        div.className = "chat-message" + (msg.from===currentUserId?" me":"");
+        const profilePic = msg.from===currentUserId ? document.getElementById("navProfilePic").src : currentChatFriendPic;
+
         let content = "";
-        if(m.type==="text") content = `<div class="bubble">${m.text}</div>`;
-        else if(m.type==="voice") content = `<div class="bubble"><audio controls src="${m.fileUrl}"></audio></div>`;
-        else if(m.type==="image") content = `<div class="bubble"><img class="zoomable" src="${m.fileUrl}" /></div>`;
-        else if(m.type==="video") content = `<div class="bubble"><video class="zoomable" controls src="${m.fileUrl}"></video></div>`;
-        else if(m.type==="pdf" || m.type==="doc") content = `<div class="bubble"><a target="_blank" href="${m.fileUrl}">📄 Open file</a></div>`;
-  
-        row.innerHTML = `<img class="tiny" src="${pic}" alt="">${content}`;
-        chatWindow.appendChild(row);
-  
-        row.querySelectorAll(".zoomable").forEach(el=>{
+        if(msg.type==="text") content = msg.text;
+        else if(msg.type==="voice") content = `<audio controls src="${msg.fileUrl}"></audio>`;
+        else if(msg.type==="image") content = `<img src="${msg.fileUrl}" class="zoomable">`;
+        else if(msg.type==="video") content = `<video src="${msg.fileUrl}" controls class="zoomable"></video>`;
+        else if(msg.type==="pdf" || msg.type==="doc") content = `<a href="${msg.fileUrl}" class="pdf-link" target="_blank">📄 ${msg.fileUrl.split("/").pop()}</a>`;
+
+        div.innerHTML = `
+          ${msg.from!==currentUserId?`<img src="${profilePic}" class="profile">`:""}
+          <div style="display:flex; flex-direction:column;">
+            <strong>${msg.from===currentUserId?"Me":currentChatFriendName}:</strong>
+            ${content}
+          </div>
+          ${msg.from===currentUserId?`<img src="${profilePic}" class="profile">`:""}
+        `;
+        chatWindow.appendChild(div);
+
+        div.querySelectorAll(".zoomable").forEach(el=>{
           el.addEventListener("click", ()=> openMediaModal(el.src, el.tagName.toLowerCase()));
         });
-      });
-      scrollToBottom();
+      }
     });
-  }
-  
-  $("#sendMsgBtn").addEventListener("click", async ()=>{
-    const text = $("#chatInput").value.trim();
-    if(!text || !peerId) return;
-    await addDoc(collection(db,"messages"),{
-      from: currentUserId, to: peerId, text, type:"text",
-      timestamp: serverTimestamp(), read:false
-    });
-    $("#chatInput").value = "";
+    chatWindow.scrollTop = chatWindow.scrollHeight;
   });
-  
-  $("#attachFile").addEventListener("change", async (e)=>{
-    const file = e.target.files[0]; if(!file || !peerId) return;
-    let type = "image";
-    if(file.type.startsWith("audio")) type="voice";
-    else if(file.type.startsWith("video")) type="video";
-    else if(file.type==="application/pdf") type="pdf";
-    else if(file.type.includes("word")) type="doc";
-  
-    const url = await uploadToCloudinary(file);
-    await addDoc(collection(db,"messages"),{
-      from: currentUserId, to: peerId, fileUrl:url, type,
-      timestamp: serverTimestamp(), read:false
-    });
-    e.target.value = "";
-  });
-  
-  /* ---------------- Voice recorder ---------------- */
-  let mediaRecorder=null, audioChunks=[], seconds=0, timerInt=null;
-  $("#recordBtn").addEventListener("click", async ()=>{
-    if(mediaRecorder && mediaRecorder.state==="recording"){
-      mediaRecorder.stop(); return;
-    }
-    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
-    mediaRecorder = new MediaRecorder(stream);
-    audioChunks = []; seconds = 0; $("#voiceTimer").textContent = "00:00";
-    mediaRecorder.ondataavailable = e=> audioChunks.push(e.data);
-    mediaRecorder.onstop = async ()=>{
-      clearInterval(timerInt);
-      const blob = new Blob(audioChunks,{type:"audio/webm"});
-      const file = new File([blob],"voice.webm",{type:"audio/webm"});
-      const url = await uploadToCloudinary(file);
-      await addDoc(collection(db,"messages"),{
-        from: currentUserId, to: peerId, fileUrl:url, type:"voice",
-        timestamp: serverTimestamp(), read:false
-      });
-    };
-    mediaRecorder.start();
-    timerInt = setInterval(()=>{
-      seconds++; const m = String(Math.floor(seconds/60)).padStart(2,"0");
-      const s = String(seconds%60).padStart(2,"0"); $("#voiceTimer").textContent = `${m}:${s}`;
-    },1000);
-  });
-  
-  /* ---------------- Media modal ---------------- */
-  function openMediaModal(url,type){
-    $("#mediaContent").innerHTML =
-      type==="image" ? `<img src="${url}" />` :
-      type==="video" ? `<video src="${url}" controls autoplay></video>` :
-      `<a href="${url}" target="_blank">Open</a>`;
-    $("#mediaModal").style.display="flex";
-  }
-  window.closeMediaModal = ()=> $("#mediaModal").style.display="none";
-  
-  /* ---------------- Notifications ---------------- */
-  function listenGlobalMessages(){
-    const qMe = query(collection(db,"messages"), where("to","==", currentUserId));
-    onSnapshot(qMe, snap=>{
-      snap.docChanges().forEach(ch=>{
-        if(ch.type==="added"){
-          const m = ch.doc.data();
-          if(m.from !== currentUserId){
-            const audio = new Audio("notification.mp3"); // add your file
-            audio.play().catch(e=>console.log("Notification blocked", e));
-          }
-        }
-      });
-    });
-  }
-  
-  /* ---------------- Calls ---------------- */
-  const iceServers = [{urls:"stun:stun.l.google.com:19302"}];
-  
-  function newPeer(){
-    pc = new RTCPeerConnection({iceServers});
-    remoteStream = new MediaStream();
-    $("#remoteVideo").srcObject = remoteStream;
-  
-    pc.addEventListener("track", (ev)=> remoteStream.addTrack(ev.track));
-  }
-  
-  async function getMedia(kind){
-    return await navigator.mediaDevices.getUserMedia(
-      kind==="video" ? {audio:true, video:{facingMode:"user"}} : {audio:true}
-    );
-  }
-  
-  /* ---------------- Incoming call listener ---------------- */
-  function listenIncomingCalls(){
-    const q = query(collection(db,"calls"), where("to","==",currentUserId));
-    onSnapshot(q, snap=>{
-      snap.docChanges().forEach(async change=>{
-        if(change.type==="added"){
-          const callData = change.doc.data();
-          if(!callData.offer) return;
-          currentCallId = change.doc.id;
-          currentCallType = callData.type;
-  
-          const callerSnap = await getDoc(doc(db,"users", callData.from));
-          const caller = callerSnap.exists() ? callerSnap.data() : {};
-          $("#incomingFrom").textContent = `${caller.username || "Unknown"} is calling`;
-          $("#incomingAvatar").src = caller.profilePic || "https://i.pravatar.cc/100";
-          $("#incomingType").textContent = currentCallType==="video"?"Video call":"Audio call";
-          $("#incomingSheet").style.display="flex";
-  
-          const ring = new Audio("ringtone.mp3"); // add your ringtone
-          ring.loop = true;
-          try{ await ring.play(); } catch(e){ console.log("Ringtone blocked", e); }
-          $("#ringTone") = ring;
-        }
-      });
-    });
-  }
-  
-  /* ---------------- Accept / Decline ---------------- */
-  $("#acceptBtn").addEventListener("click", async ()=>{
-    $("#incomingSheet").style.display="none";
-    $("#callScreen").style.display="flex";
-    $("#ringTone")?.pause();
-  
-    newPeer();
-    localStream = await getMedia(currentCallType);
-    localStream.getTracks().forEach(t=> pc.addTrack(t, localStream));
-    $("#localVideo").srcObject = localStream;
-    $("#localVideo").style.display = currentCallType==="video"?"block":"none";
-  
-    const callDoc = doc(db,"calls",currentCallId);
-    const offerCandidates = collection(callDoc,"offerCandidates");
-    const answerCandidates = collection(callDoc,"answerCandidates");
-  
-    pc.onicecandidate = e=>{ if(e.candidate) addDoc(answerCandidates, e.candidate.toJSON()); };
-  
-    const offerSnap = await getDoc(callDoc);
-    await pc.setRemoteDescription(new RTCSessionDescription(offerSnap.data().offer));
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    await updateDoc(callDoc,{answer});
-  
-    onSnapshot(offerCandidates, snap=>{
-      snap.docChanges().forEach(c=>{
-        if(c.type==="added") pc.addIceCandidate(new RTCIceCandidate(c.doc.data()));
-      });
-    });
-  });
-  
-  $("#declineBtn").addEventListener("click", ()=>{
-    $("#incomingSheet").style.display="none";
-    $("#ringTone")?.pause();
-  });
-  
-  /* ---------------- Call controls ---------------- */
-  $("#hangupBtn").addEventListener("click", ()=>{
-    if(pc) pc.close();
-    pc = null;
-    localStream?.getTracks().forEach(t=>t.stop());
-    localStream = null;
-    $("#callScreen").style.display="none";
-    if(currentCallId){
-      const callDoc = doc(db,"calls",currentCallId);
-      updateDoc(callDoc,{ended:true});
-      currentCallId = null;
-    }
-  });
-  
-  $("#toggleMic").addEventListener("click", ()=>{
-    if(!localStream) return;
-    localStream.getAudioTracks().forEach(t=> t.enabled = !t.enabled);
-  });
-  
-  $("#toggleCam").addEventListener("click", ()=>{
-    if(!localStream) return;
-    localStream.getVideoTracks().forEach(t=> t.enabled = !t.enabled);
-  });
-  
-  $("#switchToVideo").addEventListener("click", ()=>{
-    if(currentCallType==="video") return;
-    currentCallType="video";
-    localStream.getVideoTracks().forEach(track=> track.enabled=true);
-    $("#localVideo").style.display="block";
-  });
-  </script>
-  
+}
 
+// Send text
+document.getElementById("sendMsgBtn").onclick = async ()=>{
+  const text = document.getElementById("chatInput").value.trim();
+  if(!text || !currentChatFriend) return alert("Select a friend to chat");
+  await addDoc(collection(db,"messages"),{
+    from: currentUserId,
+    to: currentChatFriend,
+    text,
+    type:"text",
+    timestamp: serverTimestamp(),
+    read:false
+  });
+  document.getElementById("chatInput").value="";
+}
+
+// File attachment
+document.getElementById("attachFile").onchange = async (e)=>{
+  const file = e.target.files[0];
+  if(!file || !currentChatFriend) return;
+  let type = "image";
+  if(file.type.startsWith("audio")) type="voice";
+  else if(file.type.startsWith("video")) type="video";
+  else if(file.type==="application/pdf") type="pdf";
+  else if(file.type==="application/msword" || file.type==="application/vnd.openxmlformats-officedocument.wordprocessingml.document") type="doc";
+  const url = await uploadToCloudinary(file);
+  if(!url) return;
+  await addDoc(collection(db,"messages"),{
+    from: currentUserId,
+    to: currentChatFriend,
+    fileUrl: url,
+    type,
+    timestamp: serverTimestamp(),
+    read:false
+  });
+  e.target.value="";
+}
+
+window.closeMediaModal = function() {
+  document.getElementById("mediaModal").style.display = "none";
+}
+
+// Listen for all incoming messages to me
+function listenGlobalMessages() {
+  const q = query(collection(db, "messages"), where("to", "==", currentUserId));
+  onSnapshot(q, snap => {
+    snap.docChanges().forEach(change => {
+      if(change.type === "added"){
+        document.getElementById("msgSound").play();
+      }
+    });
+  });
+}
+
+// Media Modal
+function openMediaModal(url,type){
+  const modal = document.getElementById("mediaModal");
+  const content = document.getElementById("mediaContent");
+  if(type==="image") content.innerHTML=`<img src="${url}">`;
+  else if(type==="video") content.innerHTML=`<video src="${url}" controls autoplay></video>`;
+  else if(type==="voice") content.innerHTML=`<audio src="${url}" controls autoplay></audio>`;
+  else content.innerHTML=`<a href="${url}" target="_blank">Open File</a>`;
+  modal.style.display="flex";
+}
+function closeMediaModal(){ document.getElementById("mediaModal").style.display="none"; }
+
+// Voice recorder
+const recordBtn = document.getElementById("recordBtn");
+const voiceTimer = document.getElementById("voiceTimer");
+recordBtn.onclick = async ()=>{
+  if(mediaRecorder && mediaRecorder.state==="recording"){
+    mediaRecorder.stop();
+    return;
+  }
+  if(!navigator.mediaDevices) return alert("No microphone found");
+  const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+  mediaRecorder = new MediaRecorder(stream);
+  audioChunks = [];
+  seconds=0;
+  voiceTimer.innerText="00:00";
+
+  mediaRecorder.ondataavailable = e=>audioChunks.push(e.data);
+  mediaRecorder.onstop = async ()=>{
+    clearInterval(timerInterval);
+    const blob = new Blob(audioChunks,{type:"audio/webm"});
+    const file = new File([blob],"voice.webm",{type:"audio/webm"});
+    const url = await uploadToCloudinary(file);
+    if(!url) return;
+    await addDoc(collection(db,"messages"),{
+      from: currentUserId,
+      to: currentChatFriend,
+      fileUrl:url,
+      type:"voice",
+      timestamp: serverTimestamp(),
+      read:false
+    });
+  }
+
+  mediaRecorder.start();
+  timerInterval = setInterval(()=>{
+    seconds++;
+    const m = String(Math.floor(seconds/60)).padStart(2,'0');
+    const s = String(seconds%60).padStart(2,'0');
+    voiceTimer.innerText=`${m}:${s}`;
+  },1000);
+}
+</script>
 </body>
 </html>

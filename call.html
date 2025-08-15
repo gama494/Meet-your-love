@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Call - Meet Your Love</title>
+<style>
+body { font-family:'Segoe UI',sans-serif; margin:0; padding:0; background:#121212; color:white; text-align:center; }
+#callScreen { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; gap:10px; }
+video { border-radius:10px; background:black; width:300px; height:200px; }
+button { padding:10px 20px; border:none; border-radius:10px; margin:5px; cursor:pointer; background:#ff4081; color:white; }
+button:hover{ background:#e91e63; }
+#callTimer { font-size:18px; margin-top:5px; }
+</style>
+</head>
+<body>
+
+<div id="callScreen">
+  <h2 id="callTitle">Calling...</h2>
+  <video id="remoteVideo" autoplay playsinline></video>
+  <video id="localVideo" autoplay playsinline muted></video>
+  <div>
+    <button id="muteBtn">Mute</button>
+    <button id="switchBtn">Switch Video</button>
+    <button id="hangupBtn">Hangup</button>
+  </div>
+  <div id="callTimer">00:00</div>
+  <audio id="ringTone" loop></audio>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, updateDoc, onSnapshot, addDoc, serverTimestamp, query, where } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+// ----- Firebase config -----
+const firebaseConfig = {
+  apiKey: "AIzaSyDLSjPvdhLP4Esh9i0k4Fbe5W3YUlHas94",
+  authDomain: "meet-your-love-3c2e9.firebaseapp.com",
+  projectId: "meet-your-love-3c2e9",
+  storageBucket: "meet-your-love-3c2e9.appspot.com",
+  messagingSenderId: "762275409257",
+  appId: "1:762275409257:web:374c366cfea5b01dae21f8"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// ----- DOM -----
+const callTitle = document.getElementById("callTitle");
+const localVideo = document.getElementById("localVideo");
+const remoteVideo = document.getElementById("remoteVideo");
+const ringTone = document.getElementById("ringTone");
+const muteBtn = document.getElementById("muteBtn");
+const switchBtn = document.getElementById("switchBtn");
+const hangupBtn = document.getElementById("hangupBtn");
+const callTimerEl = document.getElementById("callTimer");
+
+// ----- State -----
+let currentUserId = "";
+let callFriendId = localStorage.getItem("callFriendId");
+let callFriendName = localStorage.getItem("callFriendName");
+let callType = localStorage.getItem("callType") || "audio"; // "audio" or "video"
+let pc = null;
+let localStream = null;
+let remoteStream = new MediaStream();
+let callId = crypto.randomUUID();
+let callSeconds = 0;
+let callInterval = null;
+const iceServers = [{urls:"stun:stun.l.google.com:19302"}];
+
+// ----- Setup -----
+remoteVideo.srcObject = remoteStream;
+callTitle.textContent = `Calling ${callFriendName}...`;
+ringTone.src = "https://actions.google.com/sounds/v1/alarms/phone_alerts.ogg";
+ringTone.play();
+
+// ----- Auth -----
+onAuthStateChanged(auth, async user=>{
+  if(!user) return window.location.href="index.html";
+  currentUserId = user.uid;
+  startCall();
+});
+
+// ----- Functions -----
+async function startCall(){
+  // Get local media
+  localStream = await navigator.mediaDevices.getUserMedia({
+    audio:true,
+    video: callType==="video"
+  });
+  localStream.getTracks().forEach(track=> pcAddTrack(track));
+
+  localVideo.srcObject = localStream;
+  if(callType==="audio") localVideo.style.display="none";
+
+  // Create peer connection
+  pc = new RTCPeerConnection({iceServers});
+  pc.ontrack = e=> e.streams[0].getTracks().forEach(t=>remoteStream.addTrack(t));
+  pc.onicecandidate = e=>{
+    if(e.candidate){
+      addDoc(collection(db, "calls", callId, "candidates"), e.candidate.toJSON());
+    }
+  };
+
+  // Create call doc
+  const callDoc = doc(db, "calls", callId);
+  await setDoc(callDoc, {
+    from: currentUserId,
+    to: callFriendId,
+    type: callType,
+    timestamp: serverTimestamp(),
+    answered:false,
+    ended:false
+  });
+
+  // Offer
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+  await updateDoc(callDoc, {offer});
+
+  // Listen for answer
+  onSnapshot(callDoc, snap=>{
+    const data = snap.data();
+    if(!data) return;
+    if(data.answer && !pc.currentRemoteDescription){
+      pc.setRemoteDescription(data.answer);
+      ringTone.pause();
+      startTimer();
+      callTitle.textContent = `In Call with ${callFriendName}`;
+    }
+    if(data.ended){
+      endCall();
+    }
+  });
+
+  // Listen for remote ICE
+  const candidatesCol = collection(callDoc, "candidates");
+  onSnapshot(candidatesCol, snap=>{
+    snap.docChanges().forEach(ch=>{
+      if(ch.type==="added"){
+        pc.addIceCandidate(new RTCIceCandidate(ch.doc.data()));
+      }
+    });
+  });
+}
+
+function pcAddTrack(track){
+  if(!pc) return;
+  pc.addTrack(track, localStream);
+}
+
+// Timer
+function startTimer(){
+  callSeconds=0;
+  callInterval = setInterval(()=>{
+    callSeconds++;
+    const m = String(Math.floor(callSeconds/60)).padStart(2,'0');
+    const s = String(callSeconds%60).padStart(2,'0');
+    callTimerEl.textContent = `${m}:${s}`;
+  },1000);
+}
+
+// Controls
+muteBtn.onclick = ()=> {
+  if(!localStream) return;
+  localStream.getAudioTracks().forEach(t=> t.enabled = !t.enabled);
+  muteBtn.textContent = localStream.getAudioTracks()[0].enabled?"Mute":"Unmute";
+}
+
+switchBtn.onclick = async ()=>{
+  if(!localStream) return;
+  const videoTrack = localStream.getVideoTracks()[0];
+  if(!videoTrack) return;
+  videoTrack.enabled = !videoTrack.enabled;
+  switchBtn.textContent = videoTrack.enabled?"Switch Off Video":"Switch On Video";
+}
+
+hangupBtn.onclick = async ()=>{
+  const callDoc = doc(db,"calls",callId);
+  await updateDoc(callDoc,{ended:true});
+  endCall();
+}
+
+function endCall(){
+  if(pc) pc.close();
+  localStream?.getTracks().forEach(t=>t.stop());
+  pc=null;
+  clearInterval(callInterval);
+  window.location.href="message.html";
+}
+
+</script>
+</body>
+</html>
